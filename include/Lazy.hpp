@@ -1,8 +1,13 @@
-/*
- * Lazy.hpp
+/**
+ * \file Lazy.hpp
  *
- *  Created on: Jun 9, 2016
- *      Author: matthewrodusek
+ * \brief This is the main include file for the \c Lazy library.
+ *
+ * Including this gives access to \c lazy::Lazy<T> and the utility
+ * \c lazy::make_lazy functions.
+ *
+ * \author Matthew Rodusek (matthew.rodusek@gmail.com)
+ * \version 1.0
  */
 
 #ifndef LAZY_LAZY_HPP_
@@ -25,9 +30,6 @@ namespace lazy{
 
   /// \brief Constructor tag for tag-dispatching VA Arguments
   struct ctor_va_args_tag{};
-
-  template<typename...Args>
-  struct get_signature{ typedef void type; };
 
 
   /// \brief Lazy class used for lazy-loading any type

@@ -1,8 +1,12 @@
-/*
- * index_list.hpp
+/**
+ * \file index_list.hpp
  *
- *  Created on: Jun 9, 2016
- *      Author: matthewrodusek
+ * \brief A helpful trait for enumerating \c std::tuples
+ *
+ * This idea is taken from a Stack Overflow answer for constructin
+ * classes from tuples
+ *
+ * \see http://stackoverflow.com/a/14897685
  */
 
 #ifndef LAZY_DETAIL_INDEX_LIST_HPP_

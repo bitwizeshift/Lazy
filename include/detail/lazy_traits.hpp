@@ -1,8 +1,11 @@
-/*
- * lazy_traits.hpp
+/**
+ * \file lazy_traits.hpp
  *
- *  Created on: Jun 10, 2016
- *      Author: matthewrodusek
+ * \brief This file contains a collection of helpful type traits to build the
+ *        \c Lazy class.
+ *
+ * \author Matthew Rodusek (matthew.rodusek@gmail.com)
+ * \version 1.0
  */
 
 #ifndef LAZY_DETAIL_LAZY_TRAITS_HPP_
