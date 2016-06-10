@@ -10,27 +10,30 @@
 
 namespace lazy{
 
+  /// \brief A small class used to unpack tuples at compile-time
   template <size_t... Is>
   struct index_list{};
 
   namespace detail{
 
+    /// \brief Template helper to build a range for index_lists
     template <size_t Start, size_t N, size_t... Is>
-    struct range_builder;
+    struct build_range;
 
     template <size_t Start, size_t... Is>
-    struct range_builder<Start, Start, Is...>{
+    struct build_range<Start, Start, Is...>{
         typedef index_list<Is...> type;
     };
 
     template <size_t Start, size_t N, size_t... Is>
-    struct range_builder
-      : public range_builder<Start, N - 1, N - 1, Is...>{};
+    struct build_range
+      : public build_range<Start, N - 1, N - 1, Is...>{};
 
   }
 
+  /// \brief Creates a range of indices between start and end
   template<unsigned Start, unsigned End>
-  using index_range = typename detail::range_builder<Start, End>::type;
+  using index_range = typename detail::build_range<Start, End>::type;
 
 }
 
