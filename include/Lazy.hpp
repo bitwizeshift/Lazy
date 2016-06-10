@@ -36,10 +36,7 @@ namespace lazy{
 	/// before being accessed, and destructed when put out of scope.
 	///
 	/// \tparam T the type contained within this \c Lazy
-	template<
-	  typename T,
-	  typename CtorSignature = T(void)
-	>
+	template<typename T>
 	class Lazy
 	{
 		//---------------------------------------------------------------------
@@ -47,7 +44,7 @@ namespace lazy{
 		//---------------------------------------------------------------------
 	public:
 
-	  typedef Lazy<T,CtorSignature> this_type;
+	  typedef Lazy<T>  this_type;
 
 		typedef T        value_type;
 		typedef T*       pointer;
@@ -55,8 +52,8 @@ namespace lazy{
 		typedef T&       reference;
 		typedef const T& const_reference;
 
-		typedef std::function<CtorSignature> ctor_function_type;
-		typedef std::function<void(T&)>      dtor_function_type;
+		typedef std::function<void()>   ctor_function_type;
+		typedef std::function<void(T&)> dtor_function_type;
 
 		//---------------------------------------------------------------------
 		// Construction / Destruction / Assignment
@@ -71,13 +68,19 @@ namespace lazy{
 		///
 		/// \param constructor function to use for construction
 		/// \param destructor  function to use prior to destruction
-		Lazy( ctor_function_type constructor,
-		      dtor_function_type destructor = default_destructor ) noexcept;
+		template<typename CtorFunc, typename DtorFunc>
+		Lazy( CtorFunc& constructor,
+		      DtorFunc& destructor = default_destructor ) noexcept;
 
 		/// \brief Constructs a \c Lazy by copying another \c Lazy
 		///
 		/// \param rhs the \c Lazy to copy
 		Lazy( const this_type& rhs ) noexcept( std::is_nothrow_copy_constructible<T>::value );
+
+		/// \brief Constructs a \c Lazy by moving another \c Lazy
+		///
+		/// \param rhs the \c Lazy to move
+		Lazy( this_type&& rhs ) noexcept( std::is_nothrow_move_constructible<T>::value );
 
 		/// \brief Constructs a \c Lazy by calling \c T's copy constructor
 		///
@@ -97,7 +100,7 @@ namespace lazy{
 		/// \param args arguments to \c T's constructor
     template<
       typename...Args,
-      typename = typename std::enable_if<!detail::is_ctor_or_tuple_args<Args...>::value>::type
+      typename = typename std::enable_if<!detail::is_ctor_dtor_args<Args...>::value>::type
     >
     Lazy( Args&&...args ) noexcept( std::is_nothrow_constructible<T,Args...>::value );
 
@@ -111,14 +114,6 @@ namespace lazy{
     template<typename...Args>
     Lazy( ctor_va_args_tag tag, Args&&...args ) noexcept( std::is_nothrow_constructible<T,Args...>::value );
 
-    template<typename...Args>
-    Lazy( const std::tuple<Args...>& x )
-      : m_is_initialized(false),
-        m_destructor(default_destructor)
-    {
-      construct(x);
-    }
-
     /// \brief Destructs this \c Lazy and it's \c T
     ~Lazy() noexcept( std::is_nothrow_destructible<T>::value );
 
@@ -127,6 +122,12 @@ namespace lazy{
 		/// \param rhs the \c Lazy on the right-side of the assignment
 		/// \return reference to (*this)
     this_type& operator=( const this_type& rhs ) noexcept( std::is_nothrow_copy_assignable<T>::value );
+
+    /// \brief Assigns a \c Lazy to this \c Lazy
+    ///
+    /// \param rhs the rvalue \c Lazy on the right-side of the assignment
+    /// \return reference to (*this)
+    this_type& operator=( this_type&& rhs ) noexcept( std::is_nothrow_move_assignable<T>::value );
 
 		/// \brief Assigns a \c T to this \c Lazy
 		///
@@ -255,6 +256,9 @@ namespace lazy{
 
 		/// \brief Destructs the \c Lazy object
 		void destruct( ) const noexcept(std::is_nothrow_destructible<T>::value);
+
+		template<typename U,typename Ctor,typename Dtor,typename,typename>
+		friend Lazy<T> make_lazy(Ctor& ctor, Dtor& dtor);
 	};
 
   //--------------------------------------------------------------------------
@@ -270,7 +274,7 @@ namespace lazy{
     typename...Args,
     typename = typename std::enable_if<!detail::is_ctor_dtor_args<Args...>::value>::type
   >
-  Lazy<T, std::tuple<Args...>(void)> make_lazy( Args&&... args );
+  Lazy<T> make_lazy( Args&&... args );
 
   /// \brief Makes a \c Lazy object given the constructor arguments for a type \c T
   ///
@@ -278,9 +282,9 @@ namespace lazy{
   /// \param args arguments to forward to the constructor
   /// \return the \c Lazy object
   template<typename T,typename...Args>
-  Lazy<T, std::tuple<Args...>(void)> make_lazy( ctor_va_args_tag tag, Args&&... args );
+  Lazy<T> make_lazy( ctor_va_args_tag tag, Args&&... args );
 
-/*
+
   /// \brief Makes a \c Lazy object given the constructor and destructor functions
   ///
   /// \param ctor the construction function
@@ -293,8 +297,8 @@ namespace lazy{
     typename = typename std::enable_if<detail::is_callable<Ctor>::value>::type,
     typename = typename std::enable_if<detail::is_callable<Dtor>::value>::type
   >
-  Lazy<T, typename std::result_of<Ctor>::type> make_lazy( Ctor& ctor, Dtor& dtor );
-*/
+  Lazy<T> make_lazy( Ctor& ctor, Dtor& dtor = Lazy<T>::default_destructor );
+
 } // namespace lazy
 
 #include "detail/Lazy.inl"
