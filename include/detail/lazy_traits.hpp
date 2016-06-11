@@ -69,7 +69,7 @@ namespace lazy{
 
     /// \brief type-trait to retrieve the first argument of a varidic template
     template<typename...Args>
-    struct first_arg_type{};
+    struct first_arg_type : public identity<void>{}; // fall back
 
     template<typename Arg0, typename...Args>
     struct first_arg_type<Arg0, Args...> : public identity<Arg0>{};

@@ -19,7 +19,6 @@
 
 #include "detail/lazy_traits.hpp"
 #include "detail/index_list.hpp"
-#include "lazy_exceptions.hpp"
 
 #include <type_traits>
 #include <functional>
@@ -116,32 +115,40 @@ namespace lazy{
     template<typename...Args>
     Lazy( ctor_va_args_tag tag, Args&&...args ) noexcept( std::is_nothrow_constructible<T,Args...>::value );
 
+    //---------------------------------------------------------------------
+
     /// \brief Destructs this \c Lazy and it's \c T
     ~Lazy() noexcept( std::is_nothrow_destructible<T>::value );
+
+    //---------------------------------------------------------------------
 
     /// \brief Assigns a \c Lazy to this \c Lazy
     ///
     /// \param rhs the \c Lazy on the right-side of the assignment
     /// \return reference to (*this)
-    this_type& operator=( const this_type& rhs ) noexcept( std::is_nothrow_copy_assignable<T>::value );
+    this_type& operator=( const this_type& rhs ) noexcept( std::is_nothrow_copy_assignable<T>::value &&
+                                                           std::is_nothrow_copy_constructible<T>::value );
 
     /// \brief Assigns a \c Lazy to this \c Lazy
     ///
     /// \param rhs the rvalue \c Lazy on the right-side of the assignment
     /// \return reference to (*this)
-    this_type& operator=( this_type&& rhs ) noexcept( std::is_nothrow_move_assignable<T>::value );
+    this_type& operator=( this_type&& rhs ) noexcept( std::is_nothrow_move_assignable<T>::value &&
+                                                      std::is_nothrow_move_constructible<T>::value );
 
     /// \brief Assigns a \c T to this \c Lazy
     ///
     /// \param rhs the \c T on the right-side of the assignment
     /// \return reference to (\c ptr())
-    value_type& operator=( const value_type& rhs ) noexcept( std::is_nothrow_copy_assignable<T>::value );
+    value_type& operator=( const value_type& rhs ) noexcept( std::is_nothrow_copy_assignable<T>::value &&
+                                                             std::is_nothrow_copy_constructible<T>::value );
 
     /// \brief Assigns an rvalue \c T to this \c Lazy
     ///
     /// \param rhs the \c T on the right-side of the assignment
     /// \return reference to (\c ptr())
-    value_type& operator=( value_type&& rhs ) noexcept( std::is_nothrow_copy_assignable<T>::value );
+    value_type& operator=( value_type&& rhs ) noexcept( std::is_nothrow_move_assignable<T>::value &&
+                                                        std::is_nothrow_move_constructible<T>::value );
 
     //---------------------------------------------------------------------
     // Casting
@@ -183,17 +190,17 @@ namespace lazy{
     //---------------------------------------------------------------------
   private:
 
-    typedef typename std::aligned_storage<sizeof(T),alignof(T)>::type storage_type;
+    using storage_type = typename std::aligned_storage<sizeof(T),alignof(T)>::type;
 
     //---------------------------------------------------------------------
     // Private Members
     //---------------------------------------------------------------------
   private:
 
-    mutable storage_type m_storage;
-    mutable bool         m_is_initialized;
-    ctor_function_type   m_constructor;
-    dtor_function_type   m_destructor;
+    mutable storage_type m_storage;        ///< The storage to hold the lazy type
+    mutable bool         m_is_initialized; ///< Is the type initialized?
+    ctor_function_type   m_constructor;    ///< The construction function
+    dtor_function_type   m_destructor;     ///< The destruction function
 
     //---------------------------------------------------------------------
     // Private Static Member Functions
@@ -259,47 +266,16 @@ namespace lazy{
     /// \brief Destructs the \c Lazy object
     void destruct( ) const noexcept(std::is_nothrow_destructible<T>::value);
 
-    template<typename U,typename Ctor,typename Dtor,typename,typename>
-    friend Lazy<T> make_lazy(Ctor& ctor, Dtor& dtor);
+    /// \brief Copy-assigns type at \c rhs
+    ///
+    /// \param rhs the value to assign
+    void assign( const value_type& rhs ) const noexcept(std::is_nothrow_copy_assignable<T>::value);
+
+    /// \brief Copy-assigns type at \c rhs
+    ///
+    /// \param rhs the value to assign
+    void assign( value_type&& rhs ) const noexcept(std::is_nothrow_move_assignable<T>::value);
   };
-
-  //--------------------------------------------------------------------------
-  // Utilities
-  //--------------------------------------------------------------------------
-
-  /// \brief Makes a \c Lazy object given the constructor arguments for a type \c T
-  ///
-  /// \param tag  constructor tag to dispatch to VA args
-  /// \return the \c Lazy object
-  template<
-    typename T,
-    typename...Args,
-    typename = typename std::enable_if<!detail::is_ctor_dtor_args<Args...>::value>::type
-  >
-  Lazy<T> make_lazy( Args&&... args );
-
-  /// \brief Makes a \c Lazy object given the constructor arguments for a type \c T
-  ///
-  /// \param tag  constructor tag to dispatch to VA args
-  /// \param args arguments to forward to the constructor
-  /// \return the \c Lazy object
-  template<typename T,typename...Args>
-  Lazy<T> make_lazy( ctor_va_args_tag tag, Args&&... args );
-
-
-  /// \brief Makes a \c Lazy object given the constructor and destructor functions
-  ///
-  /// \param ctor the construction function
-  /// \param ctor the destruction function
-  /// \return the \c Lazy object
-  template<
-    typename T,
-    typename Ctor,
-    typename Dtor,
-    typename = typename std::enable_if<detail::is_callable<Ctor>::value>::type,
-    typename = typename std::enable_if<detail::is_callable<Dtor>::value>::type
-  >
-  Lazy<T> make_lazy( Ctor& ctor, Dtor& dtor = Lazy<T>::default_destructor );
 
 } // namespace lazy
 
