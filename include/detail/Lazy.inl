@@ -175,9 +175,25 @@ namespace lazy{
     return *ptr();
   }
 
+  template<typename T>
+  inline Lazy<T>::operator bool() const
+  {
+    return m_is_initialized;
+  }
+
   //--------------------------------------------------------------------------
   // Operators
   //--------------------------------------------------------------------------
+
+  template<typename T>
+  inline void Lazy<T>::swap(Lazy<T>& rhs) noexcept{
+    using std::swap; // for ADL
+
+    swap(m_constructor,rhs.m_constructor);
+    swap(m_destructor,rhs.m_destructor);
+    swap(m_is_initialized,rhs.m_is_initialized);
+    swap(m_storage,rhs.m_storage);
+  }
 
   template<typename T>
   inline bool Lazy<T>::is_initialized() const noexcept{
@@ -349,6 +365,12 @@ namespace lazy{
   Lazy<T> make_lazy(Args&&...args)
   {
     return Lazy<T>(typename Lazy<T>::ctor_va_args_tag(), std::forward<Args>(args)...);
+  }
+
+  template<typename T>
+  void swap(Lazy<T>& lhs, Lazy<T>& rhs) noexcept
+  {
+    lhs.swap(rhs);
   }
 
 } // namespace lazy

@@ -151,10 +151,20 @@ namespace lazy{
     /// \return the reference to the lazy-loaded object
     operator reference() const;
 
+    /// \brief Checks whether this \c Lazy has an instantiated object
+    ///
+    /// \return \c true if this lazy has an instantiated object
+    explicit operator bool() const;
+
     //------------------------------------------------------------------------
     // Operators
     //------------------------------------------------------------------------
   public:
+
+    /// \brief Swapperator class for no-exception swapping
+    ///
+    /// \param rhs the rhs to swap
+    void swap(Lazy<T>& rhs) noexcept;
 
     /// \brief Boolean to check if this \c Lazy is initialized.
     ///
@@ -322,6 +332,13 @@ namespace lazy{
   /// \return an instance of the \c Lazy object
   template<typename T, typename...Args>
   Lazy<T> make_lazy( Args&&...args );
+
+  /// \brief Implementation of \c swap for custom swapperations using ADL
+  ///
+  /// \param lhs the left-hand \c Lazy object
+  /// \param rhs the right-hand \c Lazy object
+  template<typename T>
+  void swap(Lazy<T>& lhs, Lazy<T>& rhs) noexcept;
 
 } // namespace lazy
 
