@@ -13,7 +13,7 @@
 #ifndef LAZY_LAZY_HPP_
 #define LAZY_LAZY_HPP_
 
-#if __cplusplus < 201102L
+#if __cplusplus < 201103L
 # error This file requires compiler and library support for the ISO C++11 standard.
 #endif
 
@@ -289,6 +289,9 @@ namespace lazy{
     friend Lazy<U> make_lazy( Args&&...args );
   };
 
+  //--------------------------------------------------------------------------
+  // Utilities
+  //--------------------------------------------------------------------------
 
   /// \brief Convenience utility to construct a \c Lazy object by specifying
   ///        \c T's constructor signature.

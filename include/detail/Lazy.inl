@@ -77,7 +77,7 @@ namespace lazy{
     static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
   }
 
-  //---------------------------------------------------------------------------
+  //--------------------------------------------------------------------------
 
   template<typename T>
   inline Lazy<T>::~Lazy()
@@ -86,7 +86,7 @@ namespace lazy{
     destruct();
   }
 
-  //---------------------------------------------------------------------------
+  //--------------------------------------------------------------------------
 
   template<typename T>
   inline Lazy<T>& Lazy<T>::operator=( const this_type& rhs )
@@ -207,16 +207,16 @@ namespace lazy{
     return ptr();
   }
 
-  //---------------------------------------------------------------------
+  //--------------------------------------------------------------------------
   // Private Static Member Functions
-  //---------------------------------------------------------------------
+  //--------------------------------------------------------------------------
 
   template<typename T>
   inline void Lazy<T>::default_destructor(value_type& x){}
 
-  //---------------------------------------------------------------------
+  //--------------------------------------------------------------------------
   // Private Constructors
-  //---------------------------------------------------------------------
+  //--------------------------------------------------------------------------
 
   template<typename T>
   template<typename...Args>
@@ -229,9 +229,9 @@ namespace lazy{
     static_assert(std::is_constructible<T,Args...>::value, "No matching constructor for type T with given arguments");
   }
 
-  //---------------------------------------------------------------------
+  //--------------------------------------------------------------------------
   // Private Member Functions
-  //---------------------------------------------------------------------
+  //--------------------------------------------------------------------------
 
   template<typename T>
   inline typename Lazy<T>::pointer Lazy<T>::ptr() const noexcept
@@ -324,11 +324,14 @@ namespace lazy{
     (*ptr()) = rhs;
   }
 
+  //--------------------------------------------------------------------------
+  // Utilities
+  //--------------------------------------------------------------------------
+
   template<typename T, typename...Args>
   Lazy<T> make_lazy(Args&&...args)
   {
     return Lazy<T>(typename Lazy<T>::ctor_va_args_tag(), std::forward<Args>(args)...);
   }
 
-
-}
+} // namespace lazy
