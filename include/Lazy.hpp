@@ -97,7 +97,7 @@ namespace lazy{
     //------------------------------------------------------------------------
 
     /// \brief Destructs this \c Lazy and it's \c T
-    ~Lazy() noexcept( std::is_nothrow_destructible<T>::value );
+    ~Lazy( ) noexcept( std::is_nothrow_destructible<T>::value );
 
     //------------------------------------------------------------------------
 
@@ -204,7 +204,7 @@ namespace lazy{
     /// \brief A default destructor function for this Lazy object
     ///
     /// \param x the \c T type to be destructed
-    static void default_destructor(value_type& x);
+    static void default_destructor( value_type& x);
 
     //------------------------------------------------------------------------
     // Private Constructor
@@ -229,24 +229,24 @@ namespace lazy{
     pointer ptr( ) const noexcept;
 
     /// \brief Forcibly initializes the \c Lazy
-    void lazy_construct( ) const;
+    void lazy_construct() const;
 
     /// \brief Constructs a \c Lazy object using \c T's copy constructor
     ///
     /// \param x Instance of \c T to copy.
-    void construct( const T& x ) const noexcept(std::is_nothrow_copy_constructible<T>::value);
+    void construct( const value_type& x ) const noexcept( std::is_nothrow_copy_constructible<T>::value );
 
     /// \brief Constructs a \c Lazy object using \c T's move constructor
     ///
     /// \param x Instance of rvalue \c T to copy
-    void construct( const value_type&& x ) const noexcept(std::is_nothrow_move_constructible<T>::value);
+    void construct( value_type&& x ) const noexcept( std::is_nothrow_move_constructible<T>::value );
 
     /// \brief Constructs a \c Lazy object using the arguments for \c T's constructor
     ///
     /// \param tag  tag to dispatch to this VA args constructor
     /// \param args the arguments to forward to the constructor
     template<typename...Args>
-    void construct( ctor_va_args_tag tag, Args&&...args ) const noexcept(std::is_nothrow_constructible<T,Args...>::value);
+    void construct( ctor_va_args_tag tag, Args&&...args ) const noexcept( std::is_nothrow_constructible<T,Args...>::value );
 
     /// \brief Constructs a \c Lazy object using the arguments provided in a
     ///        \c std::tuple for \c T's constructor
@@ -254,39 +254,39 @@ namespace lazy{
     /// \param tag  the tag for tag-dispatching
     /// \param args the arguments to forward to the constructor
     template<typename...Args>
-    void construct( const std::tuple<Args...>& args ) noexcept(std::is_nothrow_constructible<T,Args...>::value);
+    void construct( const std::tuple<Args...>& args ) noexcept( std::is_nothrow_constructible<T,Args...>::value );
 
     /// \brief Constructs a \c lazy object by passing all values stored in a
     ///        \c std::tuple to \c T's constructor
     ///
     /// \param unused unused parameter for getting index list
     template<typename...Args, size_t...Is>
-    void tuple_construct(const std::tuple<Args...>& args,
-                         const index_list<Is...>& unused ) noexcept(std::is_nothrow_constructible<T,Args...>::value);
+    void tuple_construct( const std::tuple<Args...>& args,
+                          const index_list<Is...>& unused ) noexcept( std::is_nothrow_constructible<T,Args...>::value );
 
     //------------------------------------------------------------------------
 
     /// \brief Destructs the \c Lazy object
-    void destruct( ) const noexcept(std::is_nothrow_destructible<T>::value);
+    void destruct( ) const noexcept( std::is_nothrow_destructible<T>::value );
 
     //------------------------------------------------------------------------
 
     /// \brief Copy-assigns type at \c rhs
     ///
     /// \param rhs the value to assign
-    void assign( const value_type& rhs ) const noexcept(std::is_nothrow_copy_assignable<T>::value);
+    void assign( const value_type& rhs ) const noexcept( std::is_nothrow_copy_assignable<T>::value );
 
     /// \brief Copy-assigns type at \c rhs
     ///
     /// \param rhs the value to assign
-    void assign( value_type&& rhs ) const noexcept(std::is_nothrow_move_assignable<T>::value);
+    void assign( value_type&& rhs ) const noexcept( std::is_nothrow_move_assignable<T>::value );
 
     //------------------------------------------------------------------------
     // Friends
     //------------------------------------------------------------------------
 
     template<typename U,typename...Args>
-    friend Lazy<U> make_lazy(Args&&...args);
+    friend Lazy<U> make_lazy( Args&&...args );
   };
 
 
@@ -299,7 +299,7 @@ namespace lazy{
   /// \param args the arguments to the constructor
   /// \return an instance of the \c Lazy object
   template<typename T, typename...Args>
-  Lazy<T> make_lazy(Args&&...args);
+  Lazy<T> make_lazy( Args&&...args );
 
 } // namespace lazy
 

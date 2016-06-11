@@ -131,6 +131,14 @@ namespace lazy{
     template<typename...Args>
     struct is_tuple<std::pair<Args...> > : public std::true_type{};
 
+    template<typename T, typename...Args>
+    struct is_tuple_constructible : public std::false_type{};
+
+    template<typename T, typename...Args>
+    struct is_tuple_constructible<T,std::tuple<Args...>> : public std::is_constructible<T,Args...>{};
+
+    template<typename T, typename...Args>
+    struct is_tuple_constructible<T,std::pair<Args...>> : public std::is_constructible<T,Args...>{};
   }
 }
 
