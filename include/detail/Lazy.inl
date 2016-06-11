@@ -21,7 +21,9 @@ namespace lazy{
       m_constructor([this,constructor](){this->construct(constructor());}),
       m_destructor(destructor)
   {
+    using return_type = typename detail::function_traits<CtorFunc>::result_type;
 
+    static_assert(detail::is_tuple<return_type>::value,"Lazy-construction functions must return tuples containing constructor arguments");
   }
 
   template<typename T>
@@ -51,12 +53,11 @@ namespace lazy{
     if(rhs.m_is_initialized)
     {
       construct(std::move(*rhs));
-      rhs.m_is_initialized=false; // Disallow rhs from destructing if initialized
     }
   }
 
   template<typename T>
-  inline Lazy<T>::Lazy( const T& rhs )
+  inline Lazy<T>::Lazy( const value_type& rhs )
     noexcept( std::is_nothrow_copy_constructible<T>::value )
     : m_is_initialized(false),
       m_constructor([this,rhs](){this->construct(rhs);}),
@@ -66,35 +67,13 @@ namespace lazy{
   }
 
   template<typename T>
-  inline Lazy<T>::Lazy( T&& rhs )
+  inline Lazy<T>::Lazy( value_type&& rhs )
     noexcept( std::is_nothrow_move_constructible<T>::value )
     : m_is_initialized(false),
       m_constructor([this,rhs](){this->construct(rhs);}),
       m_destructor(default_destructor)
   {
     static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
-  }
-
-  template<typename T>
-  template<typename...Args, typename>
-  inline Lazy<T>::Lazy( Args&&...args )
-    noexcept( std::is_nothrow_constructible<T,Args...>::value )
-    : m_is_initialized(false),
-      m_constructor([this,&args...](){this->construct(ctor_va_args_tag(), std::forward<Args>(args)...);}),
-      m_destructor(default_destructor)
-  {
-    static_assert(std::is_constructible<T,Args...>::value, "No matching constructor for type T with given arguments");
-  }
-
-  template<typename T>
-  template<typename...Args>
-  inline Lazy<T>::Lazy( ctor_va_args_tag tag, Args&&...args )
-    noexcept( std::is_nothrow_constructible<T,Args...>::value )
-    : m_is_initialized(false),
-      m_constructor([this,&args...](){this->construct(ctor_va_args_tag(), std::forward<Args>(args)...);}),
-      m_destructor(default_destructor)
-  {
-    static_assert(std::is_constructible<T,Args...>::value, "No matching constructor for type T with given arguments");
   }
 
   //---------------------------------------------------------------------------
@@ -144,7 +123,6 @@ namespace lazy{
       }else{
         construct(std::move(*rhs));
       }
-      rhs.m_is_initialized = false; // disallow rhs from destructing the content
     }
 
     return (*this);
@@ -233,6 +211,21 @@ namespace lazy{
 
   template<typename T>
   inline void Lazy<T>::default_destructor(value_type& x){}
+
+  //---------------------------------------------------------------------
+  // Private Constructors
+  //---------------------------------------------------------------------
+
+  template<typename T>
+  template<typename...Args>
+  inline Lazy<T>::Lazy( ctor_va_args_tag tag, Args&&...args )
+    noexcept( std::is_nothrow_constructible<T,Args...>::value )
+    : m_is_initialized(false),
+      m_constructor([this,args...](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
+      m_destructor(default_destructor)
+  {
+    static_assert(std::is_constructible<T,Args...>::value, "No matching constructor for type T with given arguments");
+  }
 
   //---------------------------------------------------------------------
   // Private Member Functions
@@ -328,5 +321,12 @@ namespace lazy{
   {
     (*ptr()) = rhs;
   }
+
+  template<typename T, typename...Args>
+  Lazy<T> make_lazy(Args&&...args)
+  {
+    return Lazy<T>(typename Lazy<T>::ctor_va_args_tag(), std::forward<Args>(args)...);
+  }
+
 
 }

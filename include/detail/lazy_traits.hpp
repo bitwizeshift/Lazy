@@ -31,29 +31,97 @@ namespace lazy{
     template<typename...Args>
     using void_t = typename voidify<Args...>::type;
 
-    /// \brief type-trait to check if \c T has a functor
-    template<typename T, typename = void>
-    struct has_functor : public std::false_type{};
+    template<size_t n, typename...Args>
+    struct arg_tuple
+      : public identity<
+          typename std::tuple_element<n, std::tuple<Args...>
+        >::type>
+    {
+      static_assert(n>=sizeof...(Args),"Index out of range");
+    };
 
+    /// \brief Type traits for retrieving various parts of a function
+    ///
+    ///
     template<typename T>
-    struct has_functor<T,void_t<decltype(&T::operator())>>: public std::true_type{};
+    struct function_traits_impl{};
 
-    /// \brief type-trait to check if \c T is callable
+    template <typename Ret, typename...Args>
+    struct function_traits_impl<Ret(Args...)>
+    {
+      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
+      typedef Ret result_type;                    /// Return type
+
+      template<size_t n>
+      using arg = arg_tuple<n,Args...>;
+    };
+
+    template <typename Ret, typename...Args>
+    struct function_traits_impl<Ret(*)(Args...)>
+    {
+      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
+      typedef Ret result_type;                         /// Return type
+
+      template<size_t n>
+      using arg = arg_tuple<n,Args...>;
+    };
+
+    /// \brief Type traits for retrieving various parts of a member function
+    ///
+    ///
     template<typename T>
-    struct is_callable : public
-      std::conditional<
-        std::is_class<T>::value,
-        has_functor<T>,
-        typename std::conditional<
-          std::is_function<T>::value,
-          std::is_function<T>,
-          std::is_member_function_pointer<T>
-        >::type
-      >::type{};
+    struct member_function_traits_impl{};
+
+    template <typename C, typename Ret, typename... Args>
+    struct member_function_traits_impl<Ret(C::*)(Args...)>
+    {
+      /// The number of arguments.
+      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
+      typedef Ret      result_type;                    /// Return type
+
+      template<size_t n>
+      using arg = arg_tuple<n,Args...>;
+    };
+
+    template <typename C, typename Ret, typename... Args>
+    struct member_function_traits_impl<Ret(C::*)(Args...) const>
+    {
+      /// The number of arguments.
+      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
+      typedef Ret result_type;                         /// Return type
+
+      template<size_t n>
+      using arg = arg_tuple<n,Args...>;
+    };
+
+    /// \brief Type trait for retrieving various parts of a functor
+    ///
+    ///
+    template<typename T>
+    struct functor_traits_impl : public member_function_traits_impl<decltype(&T::operator())>{};
+
+    /// \brief Type traits to retrieve the various parts of a callable
+    ///        function-like object
+    ///
+    /// The number of args is aliased as \c ::arity
+    /// The return type is aliased as \c ::result_type
+    /// Arguments are aliased as \c ::arg<n>::type
+    ///
+    /// \tparam T the function to retrieve types for
+    template<typename T>
+    struct function_traits : public std::conditional<
+      std::is_class<T>::value,
+      functor_traits_impl<T>,
+      typename std::conditional<
+        std::is_member_function_pointer<T>::value,
+        member_function_traits_impl<T>,
+        function_traits_impl<T>
+      >::type
+    >::type{};
 
     /// \brief type-trait to determine if a type provided is a \c std::tuple
     ///
-    /// \note this also detectes \c std::pair
+    /// \note this also detects \c std::pair
     template<typename T>
     struct is_tuple : public std::false_type{};
 
@@ -63,41 +131,6 @@ namespace lazy{
     template<typename...Args>
     struct is_tuple<std::pair<Args...> > : public std::true_type{};
 
-    //
-    // Arguments
-    //
-
-    /// \brief type-trait to retrieve the first argument of a varidic template
-    template<typename...Args>
-    struct first_arg_type : public identity<void>{}; // fall back
-
-    template<typename Arg0, typename...Args>
-    struct first_arg_type<Arg0, Args...> : public identity<Arg0>{};
-
-    /// \brief helper alias for the first argument
-    template<typename...Args>
-    using first_arg_type_t = typename first_arg_type<Args...>::type;
-
-    /// \brief type-trait to determine if variadic arguments are the first arg to
-    ///        a lazy construction
-    template<typename...Args>
-    struct is_ctor_dtor_args : public std::integral_constant<bool,
-      sizeof...(Args)<=2 &&
-      sizeof...(Args)>=1 &&
-      is_callable<first_arg_type_t<Args...>>::value
-     >{};
-    /// \brief type-trait to determine if variadic arguments are a tuple argument
-    ///        for the Lazy class
-    template<typename...Args>
-    struct is_tuple_ctor_args : public std::integral_constant<bool,
-      sizeof...(Args)==1 &&
-      is_tuple<first_arg_type_t<Args...>>::value
-    >{};
-
-    template<typename...Args>
-    struct is_ctor_or_tuple_args : public std::integral_constant<bool,
-      is_tuple_ctor_args<Args...>::value || is_ctor_dtor_args<Args...>::value
-    >{};
   }
 }
 
