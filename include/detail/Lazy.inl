@@ -7,7 +7,7 @@ namespace lazy{
   template<typename T>
   inline Lazy<T>::Lazy( ) noexcept
     : m_is_initialized(false),
-      m_constructor([&](){this->construct(ctor_va_args_tag());}),
+      m_constructor([this](){this->construct(ctor_va_args_tag());}),
       m_destructor(default_destructor)
   {
     static_assert(std::is_default_constructible<T>::value,"No matching default constructor for type T");
@@ -18,7 +18,7 @@ namespace lazy{
   inline Lazy<T>::Lazy( CtorFunc& constructor,
                         DtorFunc& destructor ) noexcept
     : m_is_initialized(false),
-      m_constructor([&](){this->construct(constructor());}),
+      m_constructor([this,constructor](){this->construct(constructor());}),
       m_destructor(destructor)
   {
 
@@ -59,7 +59,7 @@ namespace lazy{
   inline Lazy<T>::Lazy( const T& rhs )
     noexcept( std::is_nothrow_copy_constructible<T>::value )
     : m_is_initialized(false),
-      m_constructor([&](){this->construct(rhs);}),
+      m_constructor([this,rhs](){this->construct(rhs);}),
       m_destructor(default_destructor)
   {
     static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
@@ -69,7 +69,7 @@ namespace lazy{
   inline Lazy<T>::Lazy( T&& rhs )
     noexcept( std::is_nothrow_move_constructible<T>::value )
     : m_is_initialized(false),
-      m_constructor([&](){this->construct(rhs);}),
+      m_constructor([this,rhs](){this->construct(rhs);}),
       m_destructor(default_destructor)
   {
     static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
@@ -80,7 +80,7 @@ namespace lazy{
   inline Lazy<T>::Lazy( Args&&...args )
     noexcept( std::is_nothrow_constructible<T,Args...>::value )
     : m_is_initialized(false),
-      m_constructor([&](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
+      m_constructor([this,&args...](){this->construct(ctor_va_args_tag(), std::forward<Args>(args)...);}),
       m_destructor(default_destructor)
   {
     static_assert(std::is_constructible<T,Args...>::value, "No matching constructor for type T with given arguments");
@@ -91,7 +91,7 @@ namespace lazy{
   inline Lazy<T>::Lazy( ctor_va_args_tag tag, Args&&...args )
     noexcept( std::is_nothrow_constructible<T,Args...>::value )
     : m_is_initialized(false),
-      m_constructor([&](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
+      m_constructor([this,&args...](){this->construct(ctor_va_args_tag(), std::forward<Args>(args)...);}),
       m_destructor(default_destructor)
   {
     static_assert(std::is_constructible<T,Args...>::value, "No matching constructor for type T with given arguments");
