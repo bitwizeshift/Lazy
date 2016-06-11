@@ -180,6 +180,23 @@ namespace lazy{
   //--------------------------------------------------------------------------
 
   template<typename T>
+  inline bool Lazy<T>::is_initialized() const noexcept{
+    return m_is_initialized;
+  }
+
+  template<typename T>
+  inline typename Lazy<T>::pointer Lazy<T>::get(){
+    lazy_construct();
+    return ptr();
+  }
+
+  template<typename T>
+  inline typename Lazy<T>::const_pointer Lazy<T>::get() const{
+    lazy_construct();
+    return ptr();
+  }
+
+  template<typename T>
   inline typename Lazy<T>::reference Lazy<T>::operator*()
   {
     lazy_construct();

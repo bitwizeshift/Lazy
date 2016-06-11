@@ -26,6 +26,8 @@ std::cout << *lazy_string << "\n";
 lazy_string->resize(10); // Already constructed, using the same std::string
 ```
 
+This library has been written with an emphasis on performance, and aims to reduce unecessary overhead due to redundant instantiations or duplications. In order to achieve this, deferred argument construction takes copies of all arguments to be passed ot the constructor and, at construction time, will use move semantics to invoke the construction of the object. This reduces the need to pay for the cost of duplicate copies, to a cost of copy-and-move instead.
+
 ## How to Use
 
 ### Inclusion
@@ -38,7 +40,7 @@ To start using, just include `Lazy.hpp`.
 
 All `Lazy` objects have `operator->` and `operator*` overloaded, making them behave similar to a smart pointer or an iterator. The underlying type will remain uninstantiated until such time that either `->` or `*` is used, at which point it will attempt a construction of the underlying type `T`.
 
-This means that the type managed by a `Lazy` does _not_ require a default or trivial constructor in order for this to properly operate; it simply requires a a function to inform it how to instantiate the type at a later point.
+This means that the type managed by a `Lazy` does _not_ require a default or trivial constructor in order for this to properly operate; it simply requires a function to inform it how to instantiate the type at a later point.
 
 ### Construction
 
@@ -83,28 +85,28 @@ std::cout << *lazy_string << std::endl;
 
 #### 3. Function delegation
 
-If more complex logic is required for the construction of the `T` object, you can supplie a construction (and optionally destruction) function-like object (function pointer, member-function,functor,or lambda).
+If more complex logic is required for the construction of the `T` object, you can suply a construction (and optionally destruction) function-like object (function pointer, member-function,functor,or lambda).
 
 The _construction_ function simple must return a `std::tuple` containing the types that will be forwarded to the constructor (I recommend making use of `std::make_tuple` to simplify this). 
 
-The _destruction_ function must take type `T&` as a parameter and return void. The purpose of the destruction function is to give the chance to clean up anything that may not be managed by a destructor (or, in the case of using fundamental types like pointers, the chance to delete). The _destruction_ function will be called prior to calling `T`'s destructor.
+The _destruction_ function must take type `T&` as a parameter and return `void`. The purpose of the destruction function is to give the chance to clean up anything that may not be managed by a destructor (or, in the case of using fundamental types like pointers, the chance to delete). The _destruction_ function will be called prior to calling `T`'s destructor.
 
 An example of where this may become useful:
 ```c++
-auto create_file = [](){
+auto open_file = [](){
   return std::make_tuple(fopen("some/file/path","r"));
 };
 auto close_file = [](FILE* ptr){
   fclose(ptr);
 };
-auto lazy_file = lazy::Lazy<FILE*>(create_file,close_file);
+auto lazy_file = lazy::Lazy<FILE*>(open_file,close_file);
 
 // somewhere else
 use_file(*lazy_file); // constructs the lazy file object
 ```
 #### 4. Copy/Move Constructor/Assignment
 
-A `Lazy` object is able to be constructed out of an instance of the underlying type `T` through copy or move construction. The same can also be done out of instances of `Lazy<T>` as well.
+A `Lazy` object is able to be constructed out of an instance of the underlying type `T` through copy or move construction. The same can also be done with instances of `Lazy<T>` as well.
 
 In the case of `T` objects, the types will be used for deferred construction later on through a call to the copy or move constructors.
 In the case of `Lazy<T>` objects, they are constructed immediately, provided the `Lazy` being copied or moved has also itself been instantiated. If it is not, only the construction/destruction functions are copied or moved

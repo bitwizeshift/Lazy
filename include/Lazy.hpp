@@ -156,6 +156,25 @@ namespace lazy{
     //------------------------------------------------------------------------
   public:
 
+    /// \brief Boolean to check if this \c Lazy is initialized.
+    ///
+    /// \return \c true if the underlying type \c T is initialized.
+    bool is_initialized() const noexcept;
+
+    /// \brief Gets a pointer to the underlying type
+    ///
+    /// \note This has been added to have a similar API to smart pointers
+    ///
+    /// \return the pointer to the underlying type
+    pointer get();
+
+    /// \brief Gets a const pointer to the underlying type
+    ///
+    /// \note This has been added to have a similar API to smart pointers
+    ///
+    /// \return the pointer to the underlying type
+    const_pointer get() const;
+
     /// \brief Dereferences this \c Lazy object into the lazy-loaded object
     ///
     /// \return a reference to the lazy-loaded object
