@@ -354,7 +354,7 @@ namespace lazy{
   inline void Lazy<T>::assign( value_type&& rhs ) const
     noexcept(std::is_nothrow_move_assignable<T>::value)
   {
-    (*ptr()) = rhs;
+    (*ptr()) = std::forward<value_type>(rhs);
   }
 
   //--------------------------------------------------------------------------

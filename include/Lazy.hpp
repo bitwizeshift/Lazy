@@ -51,9 +51,6 @@ namespace lazy{
     typedef T&       reference;
     typedef const T& const_reference;
 
-    typedef std::function<void()>   ctor_function_type;
-    typedef std::function<void(T&)> dtor_function_type;
-
     //------------------------------------------------------------------------
     // Construction / Destruction / Assignment
     //------------------------------------------------------------------------
@@ -212,6 +209,9 @@ namespace lazy{
 
     /// \brief Constructor tag for tag-dispatching VA Arguments
     struct ctor_va_args_tag{};
+
+    typedef std::function<void()>   ctor_function_type;
+    typedef std::function<void(T&)> dtor_function_type;
 
     using storage_type = typename std::aligned_storage<sizeof(T),alignof(T)>::type;
 
