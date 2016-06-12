@@ -30,7 +30,7 @@ namespace lazy{
     /// \brief Type trait for getting the nth argument type from a variadic
     ///        template.
     ///
-    /// This is primarily used for composition in \c function_traits
+    /// This is used for composition in \c function_traits
     ///
     /// The result is aliased as \c ::type
     template<size_t n, typename...Args>
@@ -40,6 +40,26 @@ namespace lazy{
         >::type>
     {
       static_assert(n>=sizeof...(Args),"Index out of range");
+    };
+
+    //------------------------------------------------------------------------
+
+    /// \brief Identity type-trait for all function traits to inherit from
+    ///
+    /// This type is only used in composition.
+    ///
+    /// This aliases the following common types:
+    /// - The number of arguments to the function as \c ::arity
+    /// - The type of the return as \c ::result_type
+    /// - The nth argument as \c ::arg<n>::type
+    template<typename Ret,typename...Args>
+    struct function_traits_identity{
+      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
+
+      typedef Ret result_type; /// Return type
+
+      template<size_t n>
+      using arg = arg_tuple<n,Args...>; /// Alias of the nth arg
     };
 
     //------------------------------------------------------------------------
@@ -56,22 +76,12 @@ namespace lazy{
     };
 
     template <typename Ret, typename...Args>
-    struct function_traits_impl<Ret(Args...)>{
-      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
-      typedef Ret result_type;                    /// Return type
-
-      template<size_t n>
-      using arg = arg_tuple<n,Args...>;
-    };
+    struct function_traits_impl<Ret(Args...)>
+      : public function_traits_identity<Ret,Args...>{};
 
     template <typename Ret, typename...Args>
-    struct function_traits_impl<Ret(*)(Args...)>{
-      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
-      typedef Ret result_type;                         /// Return type
-
-      template<size_t n>
-      using arg = arg_tuple<n,Args...>;
-    };
+    struct function_traits_impl<Ret(*)(Args...)>
+      : public function_traits_identity<Ret,Args...>{};
 
     //------------------------------------------------------------------------
 
@@ -87,42 +97,20 @@ namespace lazy{
     };
 
     template <typename C, typename Ret, typename... Args>
-    struct member_function_traits_impl<Ret(C::*)(Args...)>{
-      /// The number of arguments.
-      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
-      typedef Ret      result_type;                    /// Return type
-
-      template<size_t n>
-      using arg = arg_tuple<n,Args...>;
-    };
+    struct member_function_traits_impl<Ret(C::*)(Args...)>
+      : public function_traits_identity<Ret,Args...>{};
 
     template <typename C, typename Ret, typename... Args>
-    struct member_function_traits_impl<Ret(C::*)(Args...) const>{
-      /// The number of arguments.
-      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
-      typedef Ret result_type;                         /// Return type
-
-      template<size_t n>
-      using arg = arg_tuple<n,Args...>;
-    };
+    struct member_function_traits_impl<Ret(C::*)(Args...) const>
+      : public function_traits_identity<Ret,Args...>{};
 
     template <typename C, typename Ret, typename... Args>
-    struct member_function_traits_impl<Ret(C::*)(Args...) volatile>{
-      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
-      typedef Ret result_type;                         /// Return type
-
-      template<size_t n>
-      using arg = arg_tuple<n,Args...>;
-    };
+    struct member_function_traits_impl<Ret(C::*)(Args...) volatile>
+      : public function_traits_identity<Ret,Args...>{};
 
     template <typename C, typename Ret, typename... Args>
-    struct member_function_traits_impl<Ret(C::*)(Args...) const volatile>{
-      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
-      typedef Ret result_type;                         /// Return type
-
-      template<size_t n>
-      using arg = arg_tuple<n,Args...>;
-    };
+    struct member_function_traits_impl<Ret(C::*)(Args...) const volatile>
+      : public function_traits_identity<Ret,Args...>{};
 
     //------------------------------------------------------------------------
 
@@ -170,10 +158,10 @@ namespace lazy{
     struct is_tuple : public std::false_type{};
 
     template<typename...Args>
-    struct is_tuple<std::tuple<Args...> > : public std::true_type{};
+    struct is_tuple<std::tuple<Args...>> : public std::true_type{};
 
     template<typename...Args>
-    struct is_tuple<std::pair<Args...> > : public std::true_type{};
+    struct is_tuple<std::pair<Args...>> : public std::true_type{};
 
     //------------------------------------------------------------------------
 
