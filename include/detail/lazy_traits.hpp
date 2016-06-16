@@ -17,6 +17,9 @@
 namespace lazy{
   namespace detail{
 
+    template<bool b>
+    using boolean_constant = std::integral_constant<bool,b>;
+
     /// \brief Type-trait for identities (always defines \c T as \c type)
     ///
     /// This aliases \c T as \c ::type
@@ -147,6 +150,23 @@ namespace lazy{
       >::type
     >::type{};
 
+    /// \brief Type trait for determining whether the given type is a functor
+    ///
+    /// This only works for normal, non-templated operator() types
+    ///
+    /// This aliases the result as \c ::value
+    template<typename T>
+    class is_functor{
+      typedef char yes_type;
+      typedef char(&no_type)[2];
+
+      template<typename C> static yes_type test(decltype(&C::operator()));
+      template<typename C> static no_type (&test(...));
+
+    public:
+      static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);
+    };
+
     //------------------------------------------------------------------------
 
     /// \brief type-trait to determine if a type provided is a \c std::tuple
@@ -178,6 +198,21 @@ namespace lazy{
 
     template<typename T, typename...Args>
     struct is_tuple_constructible<T,std::pair<Args...>> : public std::is_constructible<T,Args...>{};
+
+    /// \brief Type trait to determine whether or not the type \c T is
+    ///        a callable (function, member function, functor)
+    ///
+    /// The result is aliased as \c ::type
+    template<typename T>
+    struct is_callable : std::conditional<
+      std::is_class<T>::value,
+      detail::is_functor<T>,
+      typename std::conditional<
+        std::is_member_function_pointer<T>::value,
+        std::is_member_function_pointer<T>,
+        std::is_function<T>
+      >::type
+    >::type{};
 
   } // namespace detail
 } // namespace lazy

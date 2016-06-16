@@ -67,9 +67,14 @@ namespace lazy{
     ///
     /// \param constructor function to use for construction
     /// \param destructor  function to use prior to destruction
-    template<typename CtorFunc, typename DtorFunc>
-    explicit Lazy( CtorFunc& constructor,
-                   DtorFunc& destructor = default_destructor ) noexcept;
+    template<
+      typename CtorFunc,
+      typename DtorFunc = void(value_type&),
+      typename = typename std::enable_if<detail::is_callable<CtorFunc>::value>::type,
+      typename = typename std::enable_if<detail::is_callable<DtorFunc>::value>::type
+    >
+    explicit Lazy( const CtorFunc& constructor,
+                   const DtorFunc& destructor = default_destructor ) noexcept;
 
     /// \brief Constructs a \c Lazy by copying another \c Lazy
     ///

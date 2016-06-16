@@ -14,9 +14,9 @@ namespace lazy{
   }
 
   template<typename T>
-  template<typename CtorFunc, typename DtorFunc>
-  inline Lazy<T>::Lazy( CtorFunc& constructor,
-                        DtorFunc& destructor ) noexcept
+  template<typename CtorFunc,typename DtorFunc,typename,typename>
+  inline Lazy<T>::Lazy( const CtorFunc& constructor,
+                        const DtorFunc& destructor ) noexcept
     : m_is_initialized(false),
       m_constructor([this,constructor](){this->construct(constructor());}),
       m_destructor(destructor)
