@@ -16,7 +16,8 @@ namespace lazy{
   template<typename T>
   template<typename CtorFunc,typename DtorFunc,typename,typename>
   inline Lazy<T>::Lazy( const CtorFunc& constructor,
-                        const DtorFunc& destructor ) noexcept
+                        const DtorFunc& destructor )
+    noexcept( std::is_nothrow_copy_constructible<CtorFunc>::value )
     : m_is_initialized(false),
       m_constructor([this,constructor](){this->construct(constructor());}),
       m_destructor(destructor)
@@ -29,7 +30,8 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy( const this_type& rhs )
-    noexcept( std::is_nothrow_copy_constructible<T>::value )
+    noexcept( std::is_nothrow_copy_constructible<T>::value &&
+              std::is_nothrow_destructible<T>::value )
     : m_is_initialized(false),
       m_constructor(rhs.m_constructor),
       m_destructor(rhs.m_destructor)
@@ -44,7 +46,8 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy( this_type&& rhs )
-    noexcept( std::is_nothrow_move_constructible<T>::value )
+    noexcept( std::is_nothrow_move_constructible<T>::value &&
+              std::is_nothrow_destructible<T>::value )
     : m_is_initialized(false),
       m_constructor(std::move(rhs.m_constructor)),
       m_destructor(std::move(rhs.m_destructor))
@@ -69,7 +72,7 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy( value_type&& rhs )
-    noexcept( std::is_nothrow_move_constructible<T>::value )
+    noexcept( std::is_nothrow_copy_constructible<T>::value )
     : m_is_initialized(false),
       m_constructor([this,rhs](){this->construct(std::move(rhs));}),
       m_destructor(default_destructor)
@@ -90,8 +93,7 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>& Lazy<T>::operator=( const this_type& rhs )
-    noexcept( std::is_nothrow_copy_assignable<T>::value &&
-              std::is_nothrow_copy_constructible<T>::value )
+    noexcept( detail::is_nothrow_copyable<T>::value )
   {
     static_assert(std::is_copy_assignable<T>::value,"No matching copy assignment operator for type T");
     static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
@@ -109,8 +111,7 @@ namespace lazy{
 
   template<typename T>
   inline typename Lazy<T>::this_type& Lazy<T>::operator=( this_type&& rhs )
-    noexcept( std::is_nothrow_move_assignable<T>::value &&
-              std::is_nothrow_move_constructible<T>::value )
+    noexcept( detail::is_nothrow_moveable<T>::value )
   {
     static_assert(std::is_move_assignable<T>::value,"No matching move assignment operator for type T");
     static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
@@ -132,8 +133,7 @@ namespace lazy{
 
   template<typename T>
   inline typename Lazy<T>::value_type& Lazy<T>::operator=( const value_type& rhs )
-    noexcept( std::is_nothrow_copy_assignable<T>::value &&
-              std::is_nothrow_copy_constructible<T>::value )
+    noexcept( detail::is_nothrow_copyable<T>::value )
   {
     static_assert(std::is_copy_assignable<T>::value,"No matching copy assignment operator for type T");
     static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
@@ -149,8 +149,7 @@ namespace lazy{
 
   template<typename T>
   inline typename Lazy<T>::value_type& Lazy<T>::operator=( value_type&& rhs )
-    noexcept( std::is_nothrow_move_assignable<T>::value &&
-              std::is_nothrow_move_constructible<T>::value )
+    noexcept( detail::is_nothrow_moveable<T>::value )
   {
     static_assert(std::is_move_assignable<T>::value,"No matching move assignment operator for type T");
     static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
@@ -245,7 +244,7 @@ namespace lazy{
   //--------------------------------------------------------------------------
 
   template<typename T>
-  inline void Lazy<T>::default_destructor(value_type& x){}
+  inline void Lazy<T>::default_destructor(value_type& x) noexcept{}
 
   //--------------------------------------------------------------------------
   // Private Constructors
@@ -254,7 +253,7 @@ namespace lazy{
   template<typename T>
   template<typename...Args>
   inline Lazy<T>::Lazy( ctor_va_args_tag tag, Args&&...args )
-    noexcept( std::is_nothrow_constructible<T,Args...>::value )
+    noexcept( detail::is_nothrow_copyable_args<Args...>::value )
     : m_is_initialized(false),
       m_constructor([this,args...](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
       m_destructor(default_destructor)
@@ -284,7 +283,8 @@ namespace lazy{
 
   template<typename T>
   inline void Lazy<T>::construct( const value_type& x ) const
-    noexcept(std::is_nothrow_copy_constructible<T>::value)
+    noexcept( std::is_nothrow_copy_constructible<T>::value &&
+              std::is_nothrow_destructible<T>::value )
   {
     destruct();
     new (ptr()) value_type( x );
@@ -293,7 +293,8 @@ namespace lazy{
 
   template<typename T>
   inline void Lazy<T>::construct( value_type&& x ) const
-    noexcept(std::is_nothrow_move_constructible<T>::value)
+    noexcept( std::is_nothrow_move_constructible<T>::value &&
+              std::is_nothrow_destructible<T>::value )
   {
     destruct();
     new (ptr()) value_type( std::forward<value_type>(x) );
@@ -303,7 +304,8 @@ namespace lazy{
   template<typename T>
   template<typename...Args>
   inline void Lazy<T>::construct( ctor_va_args_tag tag, Args&&...args ) const
-    noexcept(std::is_nothrow_constructible<T,Args...>::value)
+    noexcept( std::is_nothrow_constructible<T,Args...>::value &&
+              std::is_nothrow_destructible<T>::value )
   {
     destruct();
     new (ptr()) value_type( std::forward<Args>(args)... );
@@ -313,7 +315,8 @@ namespace lazy{
   template<typename T>
   template<typename...Args>
   inline void Lazy<T>::construct( const std::tuple<Args...>& args )
-    noexcept(std::is_nothrow_constructible<T,Args...>::value)
+    noexcept( std::is_nothrow_constructible<T,Args...>::value &&
+              std::is_nothrow_destructible<T>::value )
   {
     destruct();
     tuple_construct(args,index_range<0,sizeof...(Args)>());
@@ -324,7 +327,7 @@ namespace lazy{
   template<typename...Args, size_t...Is>
   inline void Lazy<T>::tuple_construct(const std::tuple<Args...>& args,
                                        const index_list<Is...>& unused )
-    noexcept(std::is_nothrow_constructible<T,Args...>::value)
+    noexcept( std::is_nothrow_constructible<T,Args...>::value )
   {
     static_assert(std::is_constructible<T,Args...>::value,"No matching constructor for type T with given arguments");
 
@@ -333,7 +336,7 @@ namespace lazy{
 
   template<typename T>
   inline void Lazy<T>::destruct( ) const
-    noexcept(std::is_nothrow_destructible<T>::value)
+    noexcept( std::is_nothrow_destructible<T>::value )
   {
     if( m_is_initialized )
     {
@@ -345,14 +348,14 @@ namespace lazy{
 
   template<typename T>
   inline void Lazy<T>::assign( const value_type& rhs ) const
-    noexcept(std::is_nothrow_copy_assignable<T>::value)
+    noexcept( std::is_nothrow_copy_assignable<T>::value )
   {
     (*ptr()) = rhs;
   }
 
   template<typename T>
   inline void Lazy<T>::assign( value_type&& rhs ) const
-    noexcept(std::is_nothrow_move_assignable<T>::value)
+    noexcept( std::is_nothrow_move_assignable<T>::value )
   {
     (*ptr()) = std::forward<value_type>(rhs);
   }

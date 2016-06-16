@@ -214,6 +214,57 @@ namespace lazy{
       >::type
     >::type{};
 
+    /// \brief type-trait for logical "and"ing multiple values into a single
+    ///        boolean constant
+    ///
+    /// The result is aliased as \c ::value
+    template<bool...Args>
+    struct type_and : public std::true_type{};
+
+    template<bool...Args>
+    struct type_and<false,Args...> : public std::false_type{};
+
+    template<bool...Args>
+    struct type_and<true,Args...> : public type_and<Args...>{};
+
+    /// \brief composite type-trait for logical "and"ing multiple integral_constant
+    ///        values together into a single boolean constant
+    ///
+    /// The result is aliased as \c ::value
+    template<typename...Args>
+    using type_and_t = type_and<Args::value...>;
+
+    /// \brief type-trait to determine if all arguments are nothrow copy-
+    ///        constructible
+    ///
+    /// The result is aliased as \c ::value
+    template<typename...Args>
+    struct is_nothrow_copyable_args : public type_and_t<
+        std::is_nothrow_copy_constructible<Args>...
+      >{};
+
+    /// \brief type-trait to determine if \p T is nothrow copy constructible,
+    ///        copy assignable, and destructible.
+    ///
+    /// The result is aliased as \c ::value
+    template<typename T>
+    struct is_nothrow_copyable : public type_and_t<
+      std::is_nothrow_copy_constructible<T>,
+      std::is_nothrow_copy_assignable<T>,
+      std::is_nothrow_destructible<T>
+    >{};
+
+    /// \brief type-trait to determine if \p T is nothrow move constructible,
+    ///        move assignable, and destructible.
+    ///
+    /// The result is aliased as \c ::value
+    template<typename T>
+    struct is_nothrow_moveable : public type_and_t<
+      std::is_nothrow_move_constructible<T>,
+      std::is_nothrow_move_assignable<T>,
+      std::is_nothrow_destructible<T>
+    >{};
+
   } // namespace detail
 } // namespace lazy
 
