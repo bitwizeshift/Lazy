@@ -3,7 +3,7 @@
  *
  * \brief A helpful trait for enumerating \c std::tuples
  *
- * This idea is taken from a Stack Overflow answer for constructin
+ * This idea is taken from a Stack Overflow answer for constructing
  * classes from tuples
  *
  * \see http://stackoverflow.com/a/14897685
@@ -22,16 +22,13 @@ namespace lazy{
 
     /// \brief Template helper to build a range for index_lists
     template <size_t Start, size_t N, size_t... Is>
-    struct build_range;
+    struct build_range
+      : public build_range<Start, N - 1, N - 1, Is...>{};
 
     template <size_t Start, size_t... Is>
     struct build_range<Start, Start, Is...>{
-        typedef index_list<Is...> type;
+      typedef index_list<Is...> type;
     };
-
-    template <size_t Start, size_t N, size_t... Is>
-    struct build_range
-      : public build_range<Start, N - 1, N - 1, Is...>{};
 
   }
 
