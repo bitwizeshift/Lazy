@@ -6,8 +6,34 @@
  * Including this gives access to \c lazy::Lazy<T> and the utility
  * \c lazy::make_lazy functions.
  *
+ *
  * \author Matthew Rodusek (matthew.rodusek@gmail.com)
- * \version 1.0
+ * \copyright Matthew Rodusek
+ */
+
+/*
+ * The MIT License (MIT)
+ *
+ * Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+ * Copyright (c) 2016 Matthew Rodusek <http://rodusek.me>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 #ifndef LAZY_LAZY_HPP_
@@ -18,12 +44,10 @@
 #endif
 
 #include "detail/lazy_traits.hpp"
-#include "detail/index_list.hpp"
 
 #include <type_traits>
 #include <functional>
-#include <stdexcept>
-#include <utility>
+#include <tuple>
 
 namespace lazy{
 
@@ -43,13 +67,11 @@ namespace lazy{
     //------------------------------------------------------------------------
   public:
 
-    typedef Lazy<T>  this_type;
+    using this_type = Lazy<T>;
 
-    typedef T        value_type;
-    typedef T*       pointer;
-    typedef const T* const_pointer;
-    typedef T&       reference;
-    typedef const T& const_reference;
+    using value_type = T;
+    using pointer    = T*;
+    using reference  = T&;
 
     //------------------------------------------------------------------------
     // Construction / Destruction / Assignment
@@ -74,15 +96,14 @@ namespace lazy{
       typename = typename std::enable_if<detail::is_callable<DtorFunc>::value>::type
     >
     explicit Lazy( const CtorFunc& constructor,
-                   const DtorFunc& destructor = default_destructor ) noexcept(std::is_nothrow_copy_constructible<CtorFunc>::value);
+                   const DtorFunc& destructor = default_destructor );
 
     /// \brief Constructs a \c Lazy by copying another \c Lazy
     ///
     /// \note If \p rhs is initialized, then this copy will also be initialized
     ///
     /// \param rhs the \c Lazy to copy
-    Lazy( const this_type& rhs ) noexcept( std::is_nothrow_copy_constructible<T>::value &&
-                                           std::is_nothrow_destructible<T>::value );
+    Lazy( const this_type& rhs );
 
     /// \brief Constructs a \c Lazy by moving another \c Lazy
     ///
@@ -90,8 +111,7 @@ namespace lazy{
     ///       also be initialized
     ///
     /// \param rhs the \c Lazy to move
-    Lazy( this_type&& rhs ) noexcept( std::is_nothrow_move_constructible<T>::value &&
-                                      std::is_nothrow_destructible<T>::value );
+    Lazy( this_type&& rhs );
 
     /// \brief Constructs a \c Lazy by calling \c T's copy constructor
     ///
@@ -99,7 +119,7 @@ namespace lazy{
     ///       a copy and move-constructs it later, if necessary
     ///
     /// \param rhs the \c T to copy
-    explicit Lazy( const value_type& rhs ) noexcept( std::is_nothrow_copy_constructible<T>::value );
+    explicit Lazy( const value_type& rhs );
 
     /// \brief Constructs a \c Lazy from a given rvalue \c T
     ///
@@ -107,12 +127,12 @@ namespace lazy{
     ///       a copy and move-constructs it later, if necessary
     ///
     /// \param rhs the \c T to move
-    explicit Lazy( value_type&& rhs ) noexcept( std::is_nothrow_copy_constructible<T>::value );
+    explicit Lazy( value_type&& rhs );
 
     //------------------------------------------------------------------------
 
     /// \brief Destructs this \c Lazy and it's \c T
-    ~Lazy( ) noexcept( std::is_nothrow_destructible<T>::value );
+    ~Lazy( );
 
     //------------------------------------------------------------------------
 
@@ -123,7 +143,7 @@ namespace lazy{
     ///
     /// \param rhs the \c Lazy on the right-side of the assignment
     /// \return reference to (*this)
-    this_type& operator=( const this_type& rhs ) noexcept( detail::is_nothrow_copyable<T>::value );
+    this_type& operator=( const this_type& rhs );
 
     /// \brief Assigns a \c Lazy to this \c Lazy
     ///
@@ -132,7 +152,7 @@ namespace lazy{
     ///
     /// \param rhs the rvalue \c Lazy on the right-side of the assignment
     /// \return reference to (*this)
-    this_type& operator=( this_type&& rhs ) noexcept( detail::is_nothrow_moveable<T>::value );
+    this_type& operator=( this_type&& rhs );
 
     /// \brief Assigns a \c T to this \c Lazy
     ///
@@ -141,7 +161,7 @@ namespace lazy{
     ///
     /// \param rhs the \c T on the right-side of the assignment
     /// \return reference to (\c ptr())
-    value_type& operator=( const value_type& rhs ) noexcept( detail::is_nothrow_copyable<T>::value );
+    value_type& operator=( const value_type& rhs );
 
     /// \brief Assigns an rvalue \c T to this \c Lazy
     ///
@@ -150,7 +170,7 @@ namespace lazy{
     ///
     /// \param rhs the \c T on the right-side of the assignment
     /// \return reference to (\c ptr())
-    value_type& operator=( value_type&& rhs ) noexcept( detail::is_nothrow_moveable<T>::value );
+    value_type& operator=( value_type&& rhs );
 
     //------------------------------------------------------------------------
     // Casting
@@ -165,7 +185,7 @@ namespace lazy{
     /// \brief Checks whether this \c Lazy has an instantiated object
     ///
     /// \return \c true if this lazy has an instantiated object
-    explicit operator bool() const;
+    explicit operator bool() const noexcept;
 
     //------------------------------------------------------------------------
     // Operators
@@ -187,34 +207,17 @@ namespace lazy{
     /// \note This has been added to have a similar API to smart pointers
     ///
     /// \return the pointer to the underlying type
-    pointer get();
-
-    /// \brief Gets a const pointer to the underlying type
-    ///
-    /// \note This has been added to have a similar API to smart pointers
-    ///
-    /// \return the pointer to the underlying type
-    const_pointer get() const;
-
-    /// \brief Dereferences this \c Lazy object into the lazy-loaded object
-    ///
-    /// \return a reference to the lazy-loaded object
-    reference operator*();
+    pointer get() const;
 
     /// \brief Dereferences this \c Lazy object into the lazy-loaded object
     ///
     /// \return a constant reference to the lazy-loaded object
-    const_reference operator*() const;
+    reference operator*() const;
 
     /// \brief Dereferences this \c Lazy object into the lazy-loaded object
     ///
     /// \return a pointer to the lazy-loaded object
-    pointer operator->();
-
-    /// \brief Dereferences this \c Lazy object into the lazy-loaded object
-    ///
-    /// \return a constant pointer to the lazy-loaded object
-    const_pointer operator->() const;
+    pointer operator->() const;
 
     //------------------------------------------------------------------------
     // Private Member Types
@@ -224,8 +227,9 @@ namespace lazy{
     /// \brief Constructor tag for tag-dispatching VA Arguments
     struct ctor_va_args_tag{};
 
-    typedef std::function<void()>   ctor_function_type;
-    typedef std::function<void(T&)> dtor_function_type;
+    using unqualified_pointer = typename std::remove_cv<T>::type*;
+    using ctor_function_type  = std::function<void()>;
+    using dtor_function_type  = std::function<void(T&)>;
 
     using storage_type = typename std::aligned_storage<sizeof(T),alignof(T)>::type;
 
@@ -247,7 +251,7 @@ namespace lazy{
     /// \brief A default destructor function for this Lazy object
     ///
     /// \param x the \c T type to be destructed
-    static void default_destructor( value_type& x) noexcept;
+    static void default_destructor( value_type& x ) noexcept;
 
     //------------------------------------------------------------------------
     // Private Constructor
@@ -259,7 +263,7 @@ namespace lazy{
     /// \param tag  unused tag for dispatching to VA constructor
     /// \param args arguments to \c T's constructor
     template<typename...Args>
-    explicit Lazy( ctor_va_args_tag tag, Args&&...args ) noexcept( detail::is_nothrow_copyable_args<Args...>::value );
+    explicit Lazy( ctor_va_args_tag tag, Args&&...args ) noexcept( detail::are_nothrow_copy_constructible<Args...>::value );
 
     //------------------------------------------------------------------------
     // Private Member Functions
@@ -269,7 +273,7 @@ namespace lazy{
     /// \brief Gets a pointer to the data stored in this \c Laz
     ///
     /// \return the constant pointer to the object
-    pointer ptr( ) const noexcept;
+    unqualified_pointer ptr() const noexcept;
 
     /// \brief Forcibly initializes the \c Lazy
     void lazy_construct() const;
@@ -277,22 +281,19 @@ namespace lazy{
     /// \brief Constructs a \c Lazy object using \c T's copy constructor
     ///
     /// \param x Instance of \c T to copy.
-    void construct( const value_type& x ) const noexcept( std::is_nothrow_copy_constructible<T>::value &&
-                                                          std::is_nothrow_destructible<T>::value );
+    void construct( const value_type& x ) const;
 
     /// \brief Constructs a \c Lazy object using \c T's move constructor
     ///
     /// \param x Instance of rvalue \c T to copy
-    void construct( value_type&& x ) const noexcept( std::is_nothrow_move_constructible<T>::value &&
-                                                     std::is_nothrow_destructible<T>::value );
+    void construct( value_type&& x ) const;
 
     /// \brief Constructs a \c Lazy object using the arguments for \c T's constructor
     ///
     /// \param tag  tag to dispatch to this VA args constructor
     /// \param args the arguments to forward to the constructor
     template<typename...Args>
-    void construct( ctor_va_args_tag tag, Args&&...args ) const noexcept( std::is_nothrow_constructible<T,Args...>::value &&
-                                                                          std::is_nothrow_destructible<T>::value );
+    void construct( ctor_va_args_tag tag, Args&&...args ) const;
 
     /// \brief Constructs a \c Lazy object using the arguments provided in a
     ///        \c std::tuple for \c T's constructor
@@ -300,21 +301,20 @@ namespace lazy{
     /// \param tag  the tag for tag-dispatching
     /// \param args the arguments to forward to the constructor
     template<typename...Args>
-    void construct( const std::tuple<Args...>& args ) noexcept( std::is_nothrow_constructible<T,Args...>::value &&
-                                                                std::is_nothrow_destructible<T>::value );
+    void construct( const std::tuple<Args...>& args ) const;
 
     /// \brief Constructs a \c lazy object by passing all values stored in a
     ///        \c std::tuple to \c T's constructor
     ///
     /// \param unused unused parameter for getting index list
-    template<typename...Args, size_t...Is>
+    template<typename...Args, std::size_t...Is>
     void tuple_construct( const std::tuple<Args...>& args,
-                          const index_list<Is...>& unused ) noexcept( std::is_nothrow_constructible<T,Args...>::value );
+                          const detail::index_sequence<Is...>& unused ) const noexcept( std::is_nothrow_constructible<T,Args...>::value );
 
     //------------------------------------------------------------------------
 
     /// \brief Destructs the \c Lazy object
-    void destruct( ) const noexcept( std::is_nothrow_destructible<T>::value );
+    void destruct( ) const;
 
     //------------------------------------------------------------------------
 
@@ -345,11 +345,6 @@ namespace lazy{
   ///
   /// The arguments are stored by copy until the object is constructed in order
   /// to avoid dangling references.
-  ///
-  /// \bug This should be marked with the same \c noexcept specifiers as the
-  ///      variadic constructor for \c Lazy<T> , however clang++ has a bug
-  ///      that causes segmentation faults when using \c friend declarations
-  ///      with \c noexcept
   ///
   /// \param args the arguments to the constructor
   /// \return an instance of the \c Lazy object

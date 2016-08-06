@@ -12,10 +12,43 @@
 #define LAZY_DETAIL_LAZY_TRAITS_HPP_
 
 #include <type_traits>
-#include <utility>
+#include <tuple>
+#include <cstdlib>
 
 namespace lazy{
   namespace detail{
+
+    // c++14 index sequence
+
+    /// \brief type-trait to expand into a sequence of integers
+    ///
+    /// \note This is included in c++14 under 'utility', but not in c++11
+    template<typename T, T... Ints>
+    class integer_sequence{
+      static constexpr std::size_t size(){ return sizeof...(Ints); }
+    };
+
+    /// \brief Type alias of the common-case for integer sequences of std::size_t
+    template<std::size_t...Ints>
+    using index_sequence = integer_sequence<std::size_t,Ints...>;
+
+    /// \brief type-trait helper to build an integer sequence
+    template<std::size_t N, std::size_t... Ints>
+    struct build_index_sequence
+      : public build_index_sequence<0, N - 1, N - 1, Ints...>{};
+
+    template<std::size_t... Ints>
+    struct build_index_sequence<0, 0, Ints...>{
+      typedef index_sequence<Ints...> type;
+    };
+
+    /// \brief type-trait helper to build an index sequence from 0 to N
+    template<std::size_t N>
+    using make_index_sequence = typename build_index_sequence<N>::type;
+
+    /// \brief type-trait helper to build an index sequence of 0 to Args indices
+    template<typename...Args>
+    using index_sequence_for = make_index_sequence<sizeof...(Args)>;
 
     template<bool b>
     using boolean_constant = std::integral_constant<bool,b>;
@@ -36,7 +69,7 @@ namespace lazy{
     /// This is used for composition in \c function_traits
     ///
     /// The result is aliased as \c ::type
-    template<size_t n, typename...Args>
+    template<std::size_t n, typename...Args>
     struct arg_tuple
       : public identity<
           typename std::tuple_element<n, std::tuple<Args...>
@@ -57,11 +90,11 @@ namespace lazy{
     /// - The nth argument as \c ::arg<n>::type
     template<typename Ret,typename...Args>
     struct function_traits_identity{
-      static constexpr size_t arity = sizeof...(Args); /// Number of arguments
+      static constexpr std::size_t arity = sizeof...(Args); /// Number of arguments
 
       typedef Ret result_type; /// Return type
 
-      template<size_t n>
+      template<std::size_t n>
       using arg = arg_tuple<n,Args...>; /// Alias of the nth arg
     };
 
@@ -150,6 +183,7 @@ namespace lazy{
       >::type
     >::type{};
 
+
     /// \brief Type trait for determining whether the given type is a functor
     ///
     /// This only works for normal, non-templated operator() types
@@ -234,35 +268,13 @@ namespace lazy{
     template<typename...Args>
     using type_and_t = type_and<Args::value...>;
 
-    /// \brief type-trait to determine if all arguments are nothrow copy-
+    /// \brief type-trait to determine if all types are nothrow copy-
     ///        constructible
     ///
     /// The result is aliased as \c ::value
     template<typename...Args>
-    struct is_nothrow_copyable_args : public type_and_t<
-        std::is_nothrow_copy_constructible<Args>...
-      >{};
-
-    /// \brief type-trait to determine if \p T is nothrow copy constructible,
-    ///        copy assignable, and destructible.
-    ///
-    /// The result is aliased as \c ::value
-    template<typename T>
-    struct is_nothrow_copyable : public type_and_t<
-      std::is_nothrow_copy_constructible<T>,
-      std::is_nothrow_copy_assignable<T>,
-      std::is_nothrow_destructible<T>
-    >{};
-
-    /// \brief type-trait to determine if \p T is nothrow move constructible,
-    ///        move assignable, and destructible.
-    ///
-    /// The result is aliased as \c ::value
-    template<typename T>
-    struct is_nothrow_moveable : public type_and_t<
-      std::is_nothrow_move_constructible<T>,
-      std::is_nothrow_move_assignable<T>,
-      std::is_nothrow_destructible<T>
+    struct are_nothrow_copy_constructible : public type_and_t<
+      std::is_nothrow_copy_constructible<Args>...
     >{};
 
   } // namespace detail
