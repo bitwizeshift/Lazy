@@ -13,7 +13,7 @@ matrix:
           packages: ['g++-4.8']
       env: 
         - COMPILER=g++-4.8
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
 
     - os: linux
       compiler: gcc
@@ -23,7 +23,7 @@ matrix:
           packages: ['g++-4.9']
       env: 
         - COMPILER=g++-4.9
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
 
     - os: linux
       compiler: gcc
@@ -33,7 +33,7 @@ matrix:
           packages: ['g++-5']
       env: 
         - COMPILER=g++-5
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
 
     - os: linux
       compiler: gcc
@@ -43,13 +43,13 @@ matrix:
           packages: ['g++-6']
       env: 
         - COMPILER=g++-6
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
       
     - os: linux
       compiler: clang
       env: 
         - COMPILER=clang++
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
 
     - os: linux
       compiler: clang
@@ -59,7 +59,7 @@ matrix:
           packages: ['clang-3.5']
       env: 
         - COMPILER=clang++-3.5
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
 
     - os: linux
       compiler: clang
@@ -69,7 +69,7 @@ matrix:
           packages: ['clang-3.6']
       env: 
         - COMPILER=clang++-3.6
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
 
     - os: linux
       env:
@@ -80,7 +80,7 @@ matrix:
         - CXXFLAGS=-lc++
         - PATH=$HOME/clang-$LLVM_VERSION/bin:$PATH
         - LD_LIBRARY_PATH=$HOME/clang-$LLVM_VERSION/lib:$LD_LIBRARY_PATH
-        - OS_VERSION="lsb_release -a && uname -a"
+        - OS_VERSION="lsb_release" -a && "uname -a"
       before_install:
        - wget http://llvm.org/releases/$LLVM_VERSION/clang+llvm-$LLVM_VERSION-x86_64-linux-gnu-ubuntu-14.04.tar.xz -O $LLVM_ARCHIVE_PATH
        - mkdir $HOME/clang-$LLVM_VERSION
@@ -153,6 +153,4 @@ matrix:
 script:
   - $OS_VERSION
   - $COMPILER --version
-  - cd test
-  - make CXX=$COMPILER
-  - ./unit_tests
+  - cd test && make CXX=$COMPILER && ./unit_tests
