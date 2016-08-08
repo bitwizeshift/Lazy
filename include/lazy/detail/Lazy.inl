@@ -6,7 +6,8 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy()
-    : m_is_initialized(false),
+    : m_storage(),
+      m_is_initialized(false),
       m_constructor([this](){this->construct(ctor_va_args_tag());}),
       m_destructor(default_destructor)
   {
@@ -17,7 +18,8 @@ namespace lazy{
   template<typename CtorFunc,typename DtorFunc,typename,typename>
   inline Lazy<T>::Lazy( const CtorFunc& constructor,
                         const DtorFunc& destructor )
-    : m_is_initialized(false),
+    : m_storage(),
+      m_is_initialized(false),
       m_constructor([this,constructor](){this->construct(constructor());}),
       m_destructor(destructor)
   {
@@ -29,7 +31,8 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy( const this_type& rhs )
-    : m_is_initialized(false),
+    : m_storage(),
+      m_is_initialized(false),
       m_constructor(rhs.m_constructor),
       m_destructor(rhs.m_destructor)
   {
@@ -43,7 +46,8 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy( this_type&& rhs )
-    : m_is_initialized(false),
+    : m_storage(),
+      m_is_initialized(false),
       m_constructor(std::move(rhs.m_constructor)),
       m_destructor(std::move(rhs.m_destructor))
   {
@@ -57,7 +61,8 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy( const value_type& rhs )
-    : m_is_initialized(false),
+    : m_storage(),
+      m_is_initialized(false),
       m_constructor([this,rhs](){this->construct(std::move(rhs));}),
       m_destructor(default_destructor)
   {
@@ -66,7 +71,8 @@ namespace lazy{
 
   template<typename T>
   inline Lazy<T>::Lazy( value_type&& rhs )
-    : m_is_initialized(false),
+    : m_storage(),
+      m_is_initialized(false),
       m_constructor([this,rhs](){this->construct(std::move(rhs));}),
       m_destructor(default_destructor)
   {
@@ -212,7 +218,7 @@ namespace lazy{
   //--------------------------------------------------------------------------
 
   template<typename T>
-  inline void Lazy<T>::default_destructor(value_type& x) noexcept{}
+  inline void Lazy<T>::default_destructor(value_type&) noexcept{}
 
   //--------------------------------------------------------------------------
   // Private Constructors
@@ -220,7 +226,7 @@ namespace lazy{
 
   template<typename T>
   template<typename...Args>
-  inline Lazy<T>::Lazy( ctor_va_args_tag tag, Args&&...args )
+  inline Lazy<T>::Lazy( ctor_va_args_tag, Args&&...args )
     noexcept( detail::are_nothrow_copy_constructible<Args...>::value )
     : m_is_initialized(false),
       m_constructor([this,args...](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
@@ -272,7 +278,7 @@ namespace lazy{
 
   template<typename T>
   template<typename...Args>
-  inline void Lazy<T>::construct( ctor_va_args_tag tag, Args&&...args )
+  inline void Lazy<T>::construct( ctor_va_args_tag, Args&&...args )
     const
   {
     destruct();
