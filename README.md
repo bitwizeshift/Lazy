@@ -1,21 +1,21 @@
 # Lazy<T>
+[![Tested Compilers](https://img.shields.io/badge/compilers-gcc%20%7C%20clang-brightgreen.svg)](#tested-compilers)
 [![Build Status](https://travis-ci.org/bitwizeshift/Lazy.svg?branch=master)](https://travis-ci.org/bitwizeshift/Lazy)
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](http://bitwizeshift.github.io/Lazy)
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/bitwizeshift/Lazy/master/LICENSE.md)
-[![Compiler Support](https://img.shields.io/badge/compilers-gcc%20%7C%20clang-blue.svg)](#tested-compilers)
+[![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/bitwizeshift/Lazy/master/LICENSE.md)
+[![Github Releases](https://img.shields.io/github/release/bitwizeshift/Lazy.svg)](https://github.com/bitwizeshift/Lazy/releases)
+[![Github Issues](https://img.shields.io/github/issues/bitwizeshift/Lazy.svg)](http://github.com/bitwizeshift/Lazy/issues)
+
 
 ## What is `Lazy<T>`?
 
 `Lazy<T>` is a lightweight lazy-loading wrapper around any arbitrary class `T` written in modern C++. 
 
-It works by lazily forwarding constructor arguments stored in a `std::tuple` to `T`'s constructor prior 
-to the first invocation of the lazy object. 
-
-Construction is handled by passing functions that return the appropriate constructor signature stored in a `std::tuple` to the `Lazy<T>` object. Upon invocation of a member function, `Lazy<T>` will instantiate the type by unpacking and forwarding the supplied arguments.
-
-All constructor signatures called to `Lazy<T>` are statically type-checked for validity with the underlying type `T` class, and will assert if the signature does not conform to a given constructor.
-
-Here's an example of how this works:
+All `Lazy` objects have their construction deferred until the latest possible time to ensure the laziest
+construction. Upon invocation of a member function, the `Lazy<T>` will instantiate type `T` by
+forwarding `T` the arguments originally supplied with the construction of the `Lazy`.
+ 
+Here's an example of `Lazy` in action:
 ```c++
 auto lazy_string = lazy::make_lazy<std::string>("Hello world!");
 // Creates Lazy object, doesn't construct std::string
@@ -24,24 +24,22 @@ auto lazy_string = lazy::make_lazy<std::string>("Hello world!");
 
 std::cout << *lazy_string << "\n"; 
 //           ^----------^
-//           Constructs the std::string here for first use
+//           Constructs the std::string here for first use here
 
 lazy_string->resize(10); // Already constructed, using the same std::string
 ```
 
-This library has been written with an emphasis on performance, and aims to reduce unnecessary overhead due to redundant instantiations or duplications. In order to achieve this, deferred argument construction takes copies of all arguments to be passed ot the constructor and, at construction time, will use move semantics to invoke the construction of the object. This reduces the need to pay for the cost of duplicate copies, to a cost of copy-and-move instead.
+*It's good to be lazy!*
 
-## Why `Lazy<T>`?
+This library has been written with an emphasis on performance, and aims to reduce unnecessary overhead due to redundant instantiations or duplications. In order to achieve this, deferred argument construction takes copies of all arguments to be passed to the constructor and, at construction time, will use move semantics to invoke the construction of the object. This reduces the need to pay for the cost of duplicate copies, to a cost of copy-and-move instead.
+
+## Why be lazy?
 
 Certain objects may be expensive to construct, especially when they perform complex algorithms, async callbacks, and connections to outside systems. In situations where these objects may not be used within
 all possible execution paths, this can result in wasted cpu cycles. 
 
 Often, a lazy-initialization pattern is implemented within the class for the specific-case where it is
-needed, resulting in a lot of boilerplate code, and possible areas of failure. 
-
-`Lazy<T>` seeks to make it easier to lazily-initialize entries by handling all of the work with a
-simple tested API that behaves like a standard c++ smart pointer. 
-  
+needed, resulting in a lot of boilerplate code, and possible areas of failure. `Lazy<T>` seeks to make it easier to lazily-initialize entries by handling all of the work with a simple tested API that behaves like a standard c++ smart pointer. 
 
 ## How to Use
 
@@ -169,9 +167,9 @@ does not properly work on g++ before 4.8
 
 If any issues or bugs are encountered, please raise them through the [Github Issues Page](https://github.com/bitwizeshift/Lazy/issues). 
 
-Other than that, this library is licensed under [MIT](LICENSE.md), so feel free to make use of it and enjoy!
+Other than that, this library is licensed under [MIT](#S-license), so feel free to make use of it and enjoy!
 
-## License
+##<a name="S-license"></a> License
 
 <img align="right" src="http://opensource.org/trademarks/opensource/OSI-Approved-License-100x137.png">
 
