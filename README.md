@@ -31,21 +31,35 @@ lazy_string->resize(10); // Already constructed, using the same std::string
 
 This library has been written with an emphasis on performance, and aims to reduce unnecessary overhead due to redundant instantiations or duplications. In order to achieve this, deferred argument construction takes copies of all arguments to be passed ot the constructor and, at construction time, will use move semantics to invoke the construction of the object. This reduces the need to pay for the cost of duplicate copies, to a cost of copy-and-move instead.
 
+## Why `Lazy<T>`?
+
+Certain objects may be expensive to construct, especially when they perform complex algorithms, async callbacks, and connections to outside systems. In situations where these objects may not be used within
+all possible execution paths, this can result in wasted cpu cycles. 
+
+Often, a lazy-initialization pattern is implemented within the class for the specific-case where it is
+needed, resulting in a lot of boilerplate code, and possible areas of failure. 
+
+`Lazy<T>` seeks to make it easier to lazily-initialize entries by handling all of the work with a
+simple tested API that behaves like a standard c++ smart pointer. 
+  
+
 ## How to Use
 
 ### Inclusion
 
 `Lazy<T>` is a header-only library, making it easy to drop into any new project. 
 
-To start using, just include `Lazy.hpp`.
+To start using, add a `-I` to the `include/` directory, and include the header `lazy/Lazy.hpp` from the project.
 
 ```c++
 #include <lazy/Lazy.hpp>
+
+// use lazy::Lazy<T> 
 ```
 
 ### `Lazy<T>` Objects
 
-All `Lazy` objects have `operator->` and `operator*` overloaded, making them behave similar to a smart pointer or an iterator. The underlying type will remain uninstantiated until such time that either `->` or `*` is used, at which point it will attempt a construction of the underlying type `T`.
+All `Lazy` objects have `operator->` and `operator*` overloaded, making them behave similar to a smart pointer or an iterator. The underlying type will remain uninstantiated until such time that certain functions are accessed -- such as when the operators `->` or `*` are accessed. At which point it will attempt a construction of the underlying type `T`.
 
 This means that the type managed by a `Lazy` does _not_ require a default or trivial constructor in order for this to properly operate; it simply requires a function to inform it how to instantiate the type at a later point.
 
@@ -74,25 +88,25 @@ lazy_foo->do_something(); // constructs Foo object with Foo()
 
 If no custom logic is required to construct the type `T` other than the constructor arguments, then you can easily make use of the `lazy::make_lazy<T>(...)` utility function. 
 
-`make_lazy` behaves similarly to `std::make_shared` and `std::make_unique` in that it forwards it's arguments to the underlying type. The difference is that these arguments are stored until which time that the `Lazy` object is constructed for its first use.
+`make_lazy` behaves similarly to `std::make_shared` and `std::make_unique` in that it forwards its arguments to the underlying type. The difference is that these arguments are stored until which time that the `Lazy` object is constructed for its first use.
 
 Note that this means that arguments supplied to `make_lazy` will require a copy constructor, since copies are used. This is necessary to avoid dangling reference problems when the values passed go out of scope prior to construction of the object.
 
 An example of using `make_lazy`:
 ```c++
 
-auto lazy_string = lazy::make_lazy<std::string>("Hello World",10);
+auto lazy_string = lazy::make_lazy<std::string>("Hello World",5);
 
 // do something
 
 std::cout << *lazy_string << std::endl; 
-//           ^
+//           ^~~~~~~~~~~^
 //           Constructs std::string with the constructor std::string(const char*, size_t)
 ```
 
 #### 3. Function delegation
 
-If more complex logic is required for the construction of the `T` object, you can suply a construction (and optionally destruction) function-like object (function pointer, member-function,functor,or lambda).
+If more complex logic is required for the construction of the `T` object, you can supply a construction (and optionally destruction) function-like object (function pointer, member-function,functor, or lambda).
 
 The _construction_ function simple must return a `std::tuple` containing the types that will be forwarded to the constructor (I recommend making use of `std::make_tuple` to simplify this). 
 
@@ -116,10 +130,13 @@ use_file(*lazy_file); // constructs the lazy file object
 A `Lazy` object is able to be constructed out of an instance of the underlying type `T` through copy or move construction. The same can also be done with instances of `Lazy<T>` as well.
 
 In the case of `T` objects, the types will be used for deferred construction later on through a call to the copy or move constructors.
-In the case of `Lazy<T>` objects, they are constructed immediately, provided the `Lazy` being copied or moved has also itself been instantiated. If it is not, only the construction/destruction functions are copied or moved
+In the case of `Lazy<T>` objects, they are constructed immediately, provided the `Lazy` being copied or moved has also itself been instantiated. If it is not, only the construction/destruction functions are copied or moved.
 
 Similarly, the `Lazy` objects can be assigned to other `Lazy` objects, or directly to the type `T`. 
-For assignments, if `T` is not already constructed, the assignment will become a call to the copy or move constructor for `T`. If it is already constructed, then it will be a call to the copy or move asignment operator.
+For assignments to type `T`, if the lazy is not already constructed, it will lazily construct itself prior to assignment to avoid the need for a copy or move constructor. 
+For assignments to type `Lazy`, if the lazy being assigned is already initialized, the value will be 
+assigned to the currently constructed `Lazy`. If it is uninitialized, only the constructor to the 
+type will be assigned to defer instantiation until later use.
 
 Examples:
 ```c++
@@ -127,9 +144,55 @@ auto a = lazy::make_lazy<std::string>("Hello world");
 auto b = a; // copy construction
 ```
 
+##<a name="tested-compilers"></a> Tested Compilers
+
+The following compilers are currently being tested through continuous integration with [Travis](https://travis-ci.org/bitwizeshift/Lazy).
+
+Note that `Lazy` only works on compiler that provide proper conformance for c++11, meaning this
+does not properly work on g++ before 4.8 
+
+| Compiler        | Operating System                   |
+|-----------------|------------------------------------|
+| g++ 4.9.3       | Ubuntu 14.04.3 TLS                 |
+| g++ 5.3.0       | Ubuntu 14.04.3 TLS                 |
+| g++ 6.1.1       | Ubuntu 14.04.3 TLS                 |
+| clang 3.5.0     | Ubuntu 14.04.3 TLS                 |
+| clang 3.6.2     | Ubuntu 14.04.3 TLS                 |
+| clang 3.8.0     | Ubuntu 14.04.3 TLS                 |
+| clang xcode 6.0 | Darwin Kernel 13.4.0 (OSX 10.9.5)  |
+| clang xcode 6.1 | Darwin Kernel 14.3.0 (OSX 10.10.3) |
+| clang xcode 7.0 | Darwin Kernel 14.5.0 (OSX 10.10.5) |
+| clang xcode 7.3 | Darwin Kernel 15.5.0 (OSX 10.11.5) |
+| clang xcode 8.0 | Darwin Kernel 15.6.0 (OSX 10.11.6) |
+
 ### More
 
-Though this library is mostly complete, it has not been thoroughly tested yet.
 If any issues or bugs are encountered, please raise them through the [Github Issues Page](https://github.com/bitwizeshift/Lazy/issues). 
 
 Other than that, this library is licensed under [MIT](LICENSE.md), so feel free to make use of it and enjoy!
+
+## License
+
+<img align="right" src="http://opensource.org/trademarks/opensource/OSI-Approved-License-100x137.png">
+
+The class is licensed under the [MIT License](http://opensource.org/licenses/MIT):
+
+Copyright &copy; 2016 [Matthew Rodusek](http://rodusek.me/)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
