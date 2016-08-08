@@ -32,15 +32,15 @@ TEST_CASE("constructors")
   {
     SECTION("creates an uninitialized lazy object")
     {
-//      auto create_string = [](){
-//        return std::make_tuple("hello world",5);
-//      };
-//      auto destroy_string = [](std::string& str){
-//        // do something
-//      };
-//      auto lazy_string = lazy::Lazy<std::string>(create_string,destroy_string);
-//
-//      REQUIRE_FALSE( lazy_string.is_initialized() );
+      auto create_string = [](){
+        return std::make_tuple("hello world",5);
+      };
+      auto destroy_string = [](std::string& str){
+        // do something
+      };
+      auto lazy_string = lazy::Lazy<std::string>(create_string,destroy_string);
+
+      REQUIRE_FALSE( lazy_string.is_initialized() );
     }
   }
 
@@ -142,15 +142,15 @@ TEST_CASE("constructors")
   {
     SECTION("creates an uninitialized lazy object")
     {
-//      auto create_string = [](){
-//        return std::make_tuple("hello world",5);
-//      };
-//      auto destroy_string = [](const std::string& str){
-//        // do something
-//      };
-//      auto lazy_string = lazy::Lazy<const std::string>(create_string,destroy_string);
-//
-//      REQUIRE_FALSE( lazy_string.is_initialized() );
+      auto create_string = [](){
+        return std::make_tuple("hello world",5);
+      };
+      auto destroy_string = [](const std::string& str){
+        // do something
+      };
+      auto lazy_string = lazy::Lazy<const std::string>(create_string,destroy_string);
+
+      REQUIRE_FALSE( lazy_string.is_initialized() );
     }
   }
 

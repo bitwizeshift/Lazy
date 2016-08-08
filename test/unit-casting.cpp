@@ -38,7 +38,7 @@ TEST_CASE("casting")
 
   SECTION("operator reference()")
   {
-    SECTION("lazy initialized uninitialized lazy")
+    SECTION("lazy initializes uninitialized lazy")
     { // That's a mouthful
       auto lazy_string           = lazy::Lazy<std::string>("hello world");
       auto is_initialized_before = lazy_string.is_initialized();

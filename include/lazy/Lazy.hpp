@@ -67,11 +67,11 @@ namespace lazy{
     //------------------------------------------------------------------------
   public:
 
-    using this_type = Lazy<T>;
+    using this_type = Lazy<T>; ///< Instance of this type
 
-    using value_type = T;
-    using pointer    = T*;
-    using reference  = T&;
+    using value_type = T;  ///< The underlying type of this Lazy
+    using pointer    = T*; ///< The pointer type of the Lazy
+    using reference  = T&; ///< The reference type of the Lazy
 
     //------------------------------------------------------------------------
     // Construction / Destruction / Assignment

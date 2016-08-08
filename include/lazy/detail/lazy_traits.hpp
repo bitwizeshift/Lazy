@@ -33,18 +33,18 @@ namespace lazy{
     using index_sequence = integer_sequence<std::size_t,Ints...>;
 
     /// \brief type-trait helper to build an integer sequence
-    template<std::size_t N, std::size_t... Ints>
+    template<std::size_t Start, std::size_t N, std::size_t... Ints>
     struct build_index_sequence
-      : public build_index_sequence<0, N - 1, N - 1, Ints...>{};
+      : public build_index_sequence<Start, N - 1, N - 1, Ints...>{};
 
-    template<std::size_t... Ints>
-    struct build_index_sequence<0, 0, Ints...>{
+    template<std::size_t Start, std::size_t... Ints>
+    struct build_index_sequence<Start, Start, Ints...>{
       typedef index_sequence<Ints...> type;
     };
 
     /// \brief type-trait helper to build an index sequence from 0 to N
     template<std::size_t N>
-    using make_index_sequence = typename build_index_sequence<N>::type;
+    using make_index_sequence = typename build_index_sequence<0,N>::type;
 
     /// \brief type-trait helper to build an index sequence of 0 to Args indices
     template<typename...Args>

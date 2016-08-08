@@ -163,12 +163,6 @@ does not properly work on g++ before 4.8
 | clang xcode 7.3 | Darwin Kernel 15.5.0 (OSX 10.11.5) |
 | clang xcode 8.0 | Darwin Kernel 15.6.0 (OSX 10.11.6) |
 
-### More
-
-If any issues or bugs are encountered, please raise them through the [Github Issues Page](https://github.com/bitwizeshift/Lazy/issues). 
-
-Other than that, this library is licensed under [MIT](#S-license), so feel free to make use of it and enjoy!
-
 ##<a name="S-license"></a> License
 
 <img align="right" src="http://opensource.org/trademarks/opensource/OSI-Approved-License-100x137.png">
