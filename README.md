@@ -13,8 +13,7 @@ to the first invocation of the lazy object.
 
 Construction is handled by passing functions that return the appropriate constructor signature stored in a `std::tuple` to the `Lazy<T>` object. Upon invocation of a member function, `Lazy<T>` will instantiate the type by unpacking and forwarding the supplied arguments.
 
-All constructor signatures called to `Lazy<T>` are statically type-checked for validity with the underlying 
-type `T` class, and will assert if the signature does not conform to a given constructor.
+All constructor signatures called to `Lazy<T>` are statically type-checked for validity with the underlying type `T` class, and will assert if the signature does not conform to a given constructor.
 
 Here's an example of how this works:
 ```c++
@@ -30,7 +29,7 @@ std::cout << *lazy_string << "\n";
 lazy_string->resize(10); // Already constructed, using the same std::string
 ```
 
-This library has been written with an emphasis on performance, and aims to reduce unecessary overhead due to redundant instantiations or duplications. In order to achieve this, deferred argument construction takes copies of all arguments to be passed ot the constructor and, at construction time, will use move semantics to invoke the construction of the object. This reduces the need to pay for the cost of duplicate copies, to a cost of copy-and-move instead.
+This library has been written with an emphasis on performance, and aims to reduce unnecessary overhead due to redundant instantiations or duplications. In order to achieve this, deferred argument construction takes copies of all arguments to be passed ot the constructor and, at construction time, will use move semantics to invoke the construction of the object. This reduces the need to pay for the cost of duplicate copies, to a cost of copy-and-move instead.
 
 ## How to Use
 
@@ -39,6 +38,10 @@ This library has been written with an emphasis on performance, and aims to reduc
 `Lazy<T>` is a header-only library, making it easy to drop into any new project. 
 
 To start using, just include `Lazy.hpp`.
+
+```c++
+#include <lazy/Lazy.hpp>
+```
 
 ### `Lazy<T>` Objects
 

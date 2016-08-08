@@ -6,7 +6,7 @@
  * \author Matthew Rodusek (matthew.rodusek@gmail.com)
  */
 #include "catch.hpp"
-#include <Lazy.hpp>
+#include <lazy/Lazy.hpp>
 
 #include <tuple>
 #include <string>
@@ -21,7 +21,7 @@ TEST_CASE("operators")
       lazy::Lazy<std::string> lazy_string2("Goodbye world");
 
       auto lazy_string1_before = *lazy_string1;
-      auto lazy_string2_before  = *lazy_string2;
+      auto lazy_string2_before = *lazy_string2;
 
       lazy_string1.swap(lazy_string2);
 
@@ -36,10 +36,13 @@ TEST_CASE("operators")
       lazy::Lazy<std::string> lazy_string1("Hello world");
       lazy::Lazy<std::string> lazy_string2("Goodbye world");
 
+      auto lazy_string1_before = *lazy_string1;
+      auto lazy_string2_before = *lazy_string2;
+
       swap(lazy_string1,lazy_string2);
 
-      auto is_swapped = static_cast<std::string&>(lazy_string1) == "Goodbye world" &&
-                        static_cast<std::string&>(lazy_string2) == "Hello world";
+      auto is_swapped = lazy_string1_before == (*lazy_string2) &&
+                        lazy_string2_before == (*lazy_string1);
 
       REQUIRE(is_swapped);
     }

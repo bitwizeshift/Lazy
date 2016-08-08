@@ -6,7 +6,7 @@
  * \author Matthew Rodusek (matthew.rodusek@gmail.com)
  */
 #include "catch.hpp"
-#include <Lazy.hpp>
+#include <lazy/Lazy.hpp>
 
 #include <tuple>
 #include <string>

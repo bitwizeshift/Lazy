@@ -174,7 +174,6 @@ namespace lazy{
     swap(m_destructor,rhs.m_destructor);
     swap(m_is_initialized,rhs.m_is_initialized);
     swap((*ptr()),(*rhs.ptr())); // Swap the values of the T types
-    swap(m_storage,rhs.m_storage);
   }
 
   template<typename T>
