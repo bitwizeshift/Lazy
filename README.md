@@ -163,7 +163,7 @@ does not properly work on g++ before 4.8
 | clang xcode 7.3 | Darwin Kernel 15.5.0 (OSX 10.11.5) |
 | clang xcode 8.0 | Darwin Kernel 15.6.0 (OSX 10.11.6) |
 
-##<a name="S-license"></a> License
+##<a name="license"></a> License
 
 <img align="right" src="http://opensource.org/trademarks/opensource/OSI-Approved-License-100x137.png">
 
