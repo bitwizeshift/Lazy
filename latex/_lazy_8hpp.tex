@@ -1,0 +1,78 @@
+\hypertarget{_lazy_8hpp}{}\section{include/lazy/\+Lazy.hpp File Reference}
+\label{_lazy_8hpp}\index{include/lazy/\+Lazy.\+hpp@{include/lazy/\+Lazy.\+hpp}}
+
+
+This is the main include file for the {\ttfamily Lazy} library.  
+
+
+{\ttfamily \#include \char`\"{}detail/lazy\+\_\+traits.\+hpp\char`\"{}}\\*
+{\ttfamily \#include $<$functional$>$}\\*
+{\ttfamily \#include \char`\"{}detail/\+Lazy.\+inl\char`\"{}}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classlazy_1_1_lazy}{lazy\+::\+Lazy$<$ T $>$}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classlazy_1_1_lazy}{Lazy} class used for lazy-\/loading any type. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename T , typename... Args$>$ }\\Lazy$<$ T $>$ \hyperlink{_lazy_8hpp_ab2a66dfee67de7b7bfb8246713e813dd}{lazy\+::make\+\_\+lazy} (Args \&\&...args)
+\begin{DoxyCompactList}\small\item\em Convenience utility to construct a {\ttfamily \hyperlink{classlazy_1_1_lazy}{Lazy}} object by specifying {\ttfamily T\textquotesingle{}s} constructor signature. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{_lazy_8hpp_a200b1c200b181ec37543eb95dfc6fbde}{lazy\+::swap} (Lazy$<$ T $>$ \&lhs, Lazy$<$ T $>$ \&rhs) noexcept
+\begin{DoxyCompactList}\small\item\em Implementation of {\ttfamily swap} for custom swapperations using A\+DL. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This is the main include file for the {\ttfamily Lazy} library. 
+
+Including this gives access to {\ttfamily lazy\+::\+Lazy$<$\+T$>$} and the utility {\ttfamily lazy\+::make\+\_\+lazy} functions.
+
+\begin{DoxyAuthor}{Author}
+Matthew Rodusek (\href{mailto:matthew.rodusek@gmail.com}{\tt matthew.\+rodusek@gmail.\+com}) 
+\end{DoxyAuthor}
+\begin{DoxyCopyright}{Copyright}
+Matthew Rodusek 
+\end{DoxyCopyright}
+
+
+\subsection{Function Documentation}
+\index{Lazy.\+hpp@{Lazy.\+hpp}!make\+\_\+lazy@{make\+\_\+lazy}}
+\index{make\+\_\+lazy@{make\+\_\+lazy}!Lazy.\+hpp@{Lazy.\+hpp}}
+\subsubsection[{\texorpdfstring{make\+\_\+lazy(\+Args \&\&...\+args)}{make_lazy(Args &&...args)}}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T , typename... Args$>$ Lazy$<$T$>$ lazy\+::make\+\_\+lazy (
+\begin{DoxyParamCaption}
+\item[{Args \&\&...}]{args}
+\end{DoxyParamCaption}
+)}\hypertarget{_lazy_8hpp_file_ab2a66dfee67de7b7bfb8246713e813dd}{}\label{_lazy_8hpp_file_ab2a66dfee67de7b7bfb8246713e813dd}
+
+
+Convenience utility to construct a {\ttfamily \hyperlink{classlazy_1_1_lazy}{Lazy}} object by specifying {\ttfamily T\textquotesingle{}s} constructor signature. 
+
+The arguments are stored by copy until the object is constructed in order to avoid dangling references.
+
+
+\begin{DoxyParams}{Parameters}
+{\em args} & the arguments to the constructor \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+an instance of the {\ttfamily \hyperlink{classlazy_1_1_lazy}{Lazy}} object 
+\end{DoxyReturn}
+\index{Lazy.\+hpp@{Lazy.\+hpp}!swap@{swap}}
+\index{swap@{swap}!Lazy.\+hpp@{Lazy.\+hpp}}
+\subsubsection[{\texorpdfstring{swap(\+Lazy$<$ T $>$ \&lhs, Lazy$<$ T $>$ \&rhs) noexcept}{swap(Lazy< T > &lhs, Lazy< T > &rhs) noexcept}}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void lazy\+::swap (
+\begin{DoxyParamCaption}
+\item[{{\bf Lazy}$<$ T $>$ \&}]{lhs, }
+\item[{{\bf Lazy}$<$ T $>$ \&}]{rhs}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [noexcept]}}\hypertarget{_lazy_8hpp_file_a200b1c200b181ec37543eb95dfc6fbde}{}\label{_lazy_8hpp_file_a200b1c200b181ec37543eb95dfc6fbde}
+
+
+Implementation of {\ttfamily swap} for custom swapperations using A\+DL. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em lhs} & the left-\/hand {\ttfamily \hyperlink{classlazy_1_1_lazy}{Lazy}} object \\
+\hline
+{\em rhs} & the right-\/hand {\ttfamily \hyperlink{classlazy_1_1_lazy}{Lazy}} object \\
+\hline
+\end{DoxyParams}
