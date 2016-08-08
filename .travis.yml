@@ -92,7 +92,7 @@ matrix:
       env:
        - COMPILER=clang
        - CXXFLAGS=-lstdc++
-			 - OS_VERSION=sw_vers
+       - OS_VERSION=sw_vers
 
     - os: osx
       osx_image: beta-xcode6.2
@@ -100,7 +100,7 @@ matrix:
       env:
        - COMPILER=clang
        - CXXFLAGS=-lstdc++
-			 - OS_VERSION=sw_vers
+       - OS_VERSION=sw_vers
 
     - os: osx
       osx_image: beta-xcode6.3
@@ -108,7 +108,7 @@ matrix:
       env:
        - COMPILER=clang
        - CXXFLAGS=-lstdc++
-			 - OS_VERSION=sw_vers
+       - OS_VERSION=sw_vers
 
     - os: osx
       osx_image: xcode6.4
@@ -116,7 +116,7 @@ matrix:
       env:
        - COMPILER=clang
        - CXXFLAGS=-lstdc++
-			 - OS_VERSION=sw_vers
+       - OS_VERSION=sw_vers
 
     - os: osx
       osx_image: xcode7.1
@@ -124,7 +124,7 @@ matrix:
       env:
        - COMPILER=clang
        - CXXFLAGS=-lstdc++
-			 - OS_VERSION=sw_vers
+       - OS_VERSION=sw_vers
      
     - os: osx
       osx_image: xcode7.2
