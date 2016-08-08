@@ -5,7 +5,7 @@ namespace lazy{
   //--------------------------------------------------------------------------
 
   template<typename T>
-  inline Lazy<T>::Lazy() noexcept
+  inline Lazy<T>::Lazy()
     : m_is_initialized(false),
       m_constructor([this](){this->construct(ctor_va_args_tag());}),
       m_destructor(default_destructor)
@@ -89,17 +89,14 @@ namespace lazy{
     static_assert(std::is_copy_assignable<T>::value,"No matching copy assignment operator for type T");
     static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
 
-    m_constructor = rhs.m_constructor;
+    if(rhs.m_is_initialized) {
+      lazy_construct();
+      assign(*rhs);
+    } else {
+      m_constructor = rhs.m_constructor;
+    }
     m_destructor  = rhs.m_destructor;
 
-    if(rhs.m_is_initialized)
-    {
-      if(m_is_initialized){
-        assign(*rhs);
-      }else{
-        construct(*rhs);
-      }
-    }
     return (*this);
   }
 
@@ -109,17 +106,15 @@ namespace lazy{
     static_assert(std::is_move_assignable<T>::value,"No matching move assignment operator for type T");
     static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
 
-    m_constructor = std::move(rhs.m_constructor);
-    m_destructor  = std::move(rhs.m_destructor);
-
-    if(rhs.m_is_initialized)
-    {
-      if(m_is_initialized){
-        assign(std::move(*rhs));
-      }else{
-        construct(std::move(*rhs));
-      }
+    if(rhs.m_is_initialized) {
+      lazy_construct();
+      assign(std::move(*rhs));
+    } else {
+      m_constructor = std::move(rhs.m_constructor);
+      rhs.m_constructor = nullptr;
     }
+    m_destructor = std::move(rhs.m_destructor);
+    rhs.m_destructor = nullptr;
 
     return (*this);
   }
@@ -128,13 +123,9 @@ namespace lazy{
   inline typename Lazy<T>::value_type& Lazy<T>::operator=( const value_type& rhs )
   {
     static_assert(std::is_copy_assignable<T>::value,"No matching copy assignment operator for type T");
-    static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
 
-    if(m_is_initialized){
-      assign(rhs);
-    }else{
-      construct(rhs);
-    }
+    lazy_construct();
+    assign(rhs);
 
     return *ptr();
   }
@@ -143,13 +134,9 @@ namespace lazy{
   inline typename Lazy<T>::value_type& Lazy<T>::operator=( value_type&& rhs )
  {
     static_assert(std::is_move_assignable<T>::value,"No matching move assignment operator for type T");
-    static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
 
-    if(m_is_initialized){
-      assign(std::forward<value_type>(rhs));
-    }else{
-      construct(std::forward<value_type>(rhs));
-    }
+    lazy_construct();
+    assign(std::forward<value_type>(rhs));
 
     return *ptr();
   }
@@ -186,6 +173,7 @@ namespace lazy{
     swap(m_constructor,rhs.m_constructor);
     swap(m_destructor,rhs.m_destructor);
     swap(m_is_initialized,rhs.m_is_initialized);
+    swap((*ptr()),(*rhs.ptr())); // Swap the values of the T types
     swap(m_storage,rhs.m_storage);
   }
 
@@ -261,6 +249,7 @@ namespace lazy{
     if( !m_is_initialized )
     {
       m_constructor();
+      m_is_initialized = true;
     }
   }
 
@@ -318,7 +307,10 @@ namespace lazy{
   {
     if( m_is_initialized )
     {
-      m_destructor(*ptr());
+      if( m_destructor )
+      {
+        m_destructor(*ptr());
+      }
       ptr()->~T();
       m_is_initialized = false;
     }

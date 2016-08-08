@@ -1,4 +1,8 @@
 # Lazy<T>
+[![Build Status](https://travis-ci.org/bitwizeshift/Lazy.svg?branch=master)](https://travis-ci.org/bitwizeshift/Lazy)
+[![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](http://bitwizeshift.github.io/Lazy)
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/bitwizeshift/Lazy/master/LICENSE.md)
+[![Compiler Support](https://img.shields.io/badge/compilers-gcc%20%7C%20clang-blue.svg)](#tested-compilers)
 
 ## What is `Lazy<T>`?
 

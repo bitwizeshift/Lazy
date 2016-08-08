@@ -79,7 +79,7 @@ namespace lazy{
   public:
 
     /// \brief Default constructor; no initialization takes place
-    Lazy( ) noexcept;
+    Lazy( );
 
     /// \brief Constructs a \c Lazy given the \p constructor and \p destructor
     ///        functions
@@ -103,7 +103,7 @@ namespace lazy{
     /// \note If \p rhs is initialized, then this copy will also be initialized
     ///
     /// \param rhs the \c Lazy to copy
-    Lazy( const this_type& rhs );
+    Lazy( const Lazy<T>& rhs );
 
     /// \brief Constructs a \c Lazy by moving another \c Lazy
     ///
@@ -111,7 +111,7 @@ namespace lazy{
     ///       also be initialized
     ///
     /// \param rhs the \c Lazy to move
-    Lazy( this_type&& rhs );
+    Lazy( Lazy<T>&& rhs );
 
     /// \brief Constructs a \c Lazy by calling \c T's copy constructor
     ///
@@ -180,7 +180,7 @@ namespace lazy{
     /// \brief Converts this \c Lazy into a reference
     ///
     /// \return the reference to the lazy-loaded object
-    operator reference() const;
+    explicit operator reference() const;
 
     /// \brief Checks whether this \c Lazy has an instantiated object
     ///
