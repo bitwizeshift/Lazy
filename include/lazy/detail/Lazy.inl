@@ -57,6 +57,8 @@ namespace lazy{
     {
       construct(std::move(*rhs));
     }
+    rhs.m_constructor = nullptr;
+    rhs.m_destructor = nullptr;
   }
 
   template<typename T>
