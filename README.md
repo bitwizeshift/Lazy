@@ -1,10 +1,10 @@
 # Lazy<T>
-[![Tested Compilers](https://img.shields.io/badge/compilers-gcc%20%7C%20clang-brightgreen.svg)](#tested-compilers)
 [![Build Status](https://travis-ci.org/bitwizeshift/Lazy.svg?branch=master)](https://travis-ci.org/bitwizeshift/Lazy)
+[![Github Issues](https://img.shields.io/github/issues/bitwizeshift/Lazy.svg)](http://github.com/bitwizeshift/Lazy/issues)
+[![Tested Compilers](https://img.shields.io/badge/compilers-gcc%20%7C%20clang-blue.svg)](#tested-compilers)
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](http://bitwizeshift.github.io/Lazy)
 [![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/bitwizeshift/Lazy/master/LICENSE.md)
 [![Github Releases](https://img.shields.io/github/release/bitwizeshift/Lazy.svg)](https://github.com/bitwizeshift/Lazy/releases)
-[![Github Issues](https://img.shields.io/github/issues/bitwizeshift/Lazy.svg)](http://github.com/bitwizeshift/Lazy/issues)
 
 
 ## What is `Lazy<T>`?
