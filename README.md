@@ -1,5 +1,6 @@
 # Lazy<T>
 [![Build Status](https://travis-ci.org/bitwizeshift/Lazy.svg?branch=master)](https://travis-ci.org/bitwizeshift/Lazy)
+[![Build status](https://ci.appveyor.com/api/projects/status/50vmwi1src4ihwmk/branch/master?svg=true)](https://ci.appveyor.com/project/bitwizeshift/lazy/branch/master)
 [![Github Issues](https://img.shields.io/github/issues/bitwizeshift/Lazy.svg)](http://github.com/bitwizeshift/Lazy/issues)
 [![Tested Compilers](https://img.shields.io/badge/compilers-gcc%20%7C%20clang-blue.svg)](#tested-compilers)
 [![Documentation](https://img.shields.io/badge/docs-doxygen-blue.svg)](http://bitwizeshift.github.io/Lazy)
@@ -149,19 +150,20 @@ The following compilers are currently being tested through continuous integratio
 Note that `Lazy` only works on compiler that provide proper conformance for c++11, meaning this
 does not properly work on g++ before 4.8 
 
-| Compiler        | Operating System                   |
-|-----------------|------------------------------------|
-| g++ 4.9.3       | Ubuntu 14.04.3 TLS                 |
-| g++ 5.3.0       | Ubuntu 14.04.3 TLS                 |
-| g++ 6.1.1       | Ubuntu 14.04.3 TLS                 |
-| clang 3.5.0     | Ubuntu 14.04.3 TLS                 |
-| clang 3.6.2     | Ubuntu 14.04.3 TLS                 |
-| clang 3.8.0     | Ubuntu 14.04.3 TLS                 |
-| clang xcode 6.0 | Darwin Kernel 13.4.0 (OSX 10.9.5)  |
-| clang xcode 6.1 | Darwin Kernel 14.3.0 (OSX 10.10.3) |
-| clang xcode 7.0 | Darwin Kernel 14.5.0 (OSX 10.10.5) |
-| clang xcode 7.3 | Darwin Kernel 15.5.0 (OSX 10.11.5) |
-| clang xcode 8.0 | Darwin Kernel 15.6.0 (OSX 10.11.6) |
+| Compiler              | Operating System                   |
+|-----------------------|------------------------------------|
+| g++ 4.9.3             | Ubuntu 14.04.3 TLS                 |
+| g++ 5.3.0             | Ubuntu 14.04.3 TLS                 |
+| g++ 6.1.1             | Ubuntu 14.04.3 TLS                 |
+| clang 3.5.0           | Ubuntu 14.04.3 TLS                 |
+| clang 3.6.2           | Ubuntu 14.04.3 TLS                 |
+| clang 3.8.0           | Ubuntu 14.04.3 TLS                 |
+| clang xcode 6.0       | Darwin Kernel 13.4.0 (OSX 10.9.5)  |
+| clang xcode 6.1       | Darwin Kernel 14.3.0 (OSX 10.10.3) |
+| clang xcode 7.0       | Darwin Kernel 14.5.0 (OSX 10.10.5) |
+| clang xcode 7.3       | Darwin Kernel 15.5.0 (OSX 10.11.5) |
+| clang xcode 8.0       | Darwin Kernel 15.6.0 (OSX 10.11.6) |
+| Visual Studio 14 2015	| Windows Server 2012 R2 (x64)       |
 
 ##<a name="license"></a> License
 
