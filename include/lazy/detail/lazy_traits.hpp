@@ -248,35 +248,6 @@ namespace lazy{
       >::type
     >::type{};
 
-    /// \brief type-trait for logical "and"ing multiple values into a single
-    ///        boolean constant
-    ///
-    /// The result is aliased as \c ::value
-    template<bool...Args>
-    struct type_and : public std::true_type{};
-
-    template<bool...Args>
-    struct type_and<false,Args...> : public std::false_type{};
-
-    template<bool...Args>
-    struct type_and<true,Args...> : public type_and<Args...>{};
-
-    /// \brief composite type-trait for logical "and"ing multiple integral_constant
-    ///        values together into a single boolean constant
-    ///
-    /// The result is aliased as \c ::value
-    template<typename...Args>
-    using type_and_t = type_and<Args::value...>;
-
-    /// \brief type-trait to determine if all types are nothrow copy-
-    ///        constructible
-    ///
-    /// The result is aliased as \c ::value
-    template<typename...Args>
-    struct are_nothrow_copy_constructible : public type_and_t<
-      std::is_nothrow_copy_constructible<Args>...
-    >{};
-
   } // namespace detail
 } // namespace lazy
 

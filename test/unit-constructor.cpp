@@ -33,7 +33,7 @@ TEST_CASE("constructors")
     SECTION("creates an uninitialized lazy object")
     {
       auto create_string = [](){
-        return std::make_tuple("hello world",5);
+        return std::make_tuple(std::size_t(5),'a');
       };
       auto destroy_string = [](std::string& str){
         // do something
@@ -117,7 +117,8 @@ TEST_CASE("constructors")
   {
     SECTION("creates an uninitialized lazy object")
     {
-      auto lazy_string = lazy::make_lazy<std::string>("hello world",5);
+      const char* str = "hello world";
+      auto lazy_string = lazy::make_lazy<std::string>(str,5);
 
       REQUIRE_FALSE( lazy_string.is_initialized() );
     }
@@ -143,7 +144,7 @@ TEST_CASE("constructors")
     SECTION("creates an uninitialized lazy object")
     {
       auto create_string = [](){
-        return std::make_tuple("hello world",5);
+        return std::make_tuple(std::size_t(5),'a');
       };
       auto destroy_string = [](const std::string& str){
         // do something
@@ -216,7 +217,8 @@ TEST_CASE("constructors")
   {
     SECTION("creates an uninitialized lazy object")
     {
-      auto lazy_string = lazy::make_lazy<const std::string>("hello world",5);
+      const char* str = "hello world";
+      auto lazy_string = lazy::make_lazy<const std::string>(str,5);
 
       REQUIRE_FALSE( lazy_string.is_initialized() );
     }

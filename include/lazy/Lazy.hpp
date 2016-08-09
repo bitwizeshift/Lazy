@@ -259,7 +259,7 @@ namespace lazy{
     /// \param tag  unused tag for dispatching to VA constructor
     /// \param args arguments to \c T's constructor
     template<typename...Args>
-    explicit Lazy( ctor_va_args_tag tag, Args&&...args ) noexcept( detail::are_nothrow_copy_constructible<Args...>::value );
+    explicit Lazy( ctor_va_args_tag tag, Args&&...args );
 
     //------------------------------------------------------------------------
     // Private Member Functions

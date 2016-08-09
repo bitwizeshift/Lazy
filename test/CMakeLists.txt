@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(unit_test LANGUAGES CXX)
 
+enable_testing()
+
 # The unit test executable.
 set(UNITTEST_TARGET_NAME "unit_tests")
 add_executable("unit_tests"

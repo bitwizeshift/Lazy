@@ -154,7 +154,7 @@ namespace lazy{
   //--------------------------------------------------------------------------
 
   template<typename T>
-  inline Lazy<T>::operator Lazy<T>::reference()
+  inline Lazy<T>::operator reference()
     const
   {
     lazy_construct();
@@ -229,7 +229,6 @@ namespace lazy{
   template<typename T>
   template<typename...Args>
   inline Lazy<T>::Lazy( ctor_va_args_tag, Args&&...args )
-    noexcept( detail::are_nothrow_copy_constructible<Args...>::value )
     : m_is_initialized(false),
       m_constructor([this,args...](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
       m_destructor(default_destructor)

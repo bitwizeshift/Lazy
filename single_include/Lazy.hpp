@@ -278,35 +278,6 @@ namespace lazy{
       >::type
     >::type{};
 
-    /// \brief type-trait for logical "and"ing multiple values into a single
-    ///        boolean constant
-    ///
-    /// The result is aliased as \c ::value
-    template<bool...Args>
-    struct type_and : public std::true_type{};
-
-    template<bool...Args>
-    struct type_and<false,Args...> : public std::false_type{};
-
-    template<bool...Args>
-    struct type_and<true,Args...> : public type_and<Args...>{};
-
-    /// \brief composite type-trait for logical "and"ing multiple integral_constant
-    ///        values together into a single boolean constant
-    ///
-    /// The result is aliased as \c ::value
-    template<typename...Args>
-    using type_and_t = type_and<Args::value...>;
-
-    /// \brief type-trait to determine if all types are nothrow copy-
-    ///        constructible
-    ///
-    /// The result is aliased as \c ::value
-    template<typename...Args>
-    struct are_nothrow_copy_constructible : public type_and_t<
-      std::is_nothrow_copy_constructible<Args>...
-    >{};
-
   } // namespace detail
 
   ////////////////////////////////////////////////////////////////////////////
@@ -521,7 +492,7 @@ namespace lazy{
     /// \param tag  unused tag for dispatching to VA constructor
     /// \param args arguments to \c T's constructor
     template<typename...Args>
-    explicit Lazy( ctor_va_args_tag tag, Args&&...args ) noexcept( detail::are_nothrow_copy_constructible<Args...>::value );
+    explicit Lazy( ctor_va_args_tag tag, Args&&...args );
 
     //------------------------------------------------------------------------
     // Private Member Functions
@@ -771,7 +742,7 @@ namespace lazy{
   //--------------------------------------------------------------------------
 
   template<typename T>
-  inline Lazy<T>::operator Lazy<T>::reference()
+  inline Lazy<T>::operator reference()
     const
   {
     lazy_construct();
@@ -846,7 +817,6 @@ namespace lazy{
   template<typename T>
   template<typename...Args>
   inline Lazy<T>::Lazy( ctor_va_args_tag, Args&&...args )
-    noexcept( detail::are_nothrow_copy_constructible<Args...>::value )
     : m_is_initialized(false),
       m_constructor([this,args...](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
       m_destructor(default_destructor)
