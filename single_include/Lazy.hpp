@@ -39,10 +39,6 @@
 #ifndef LAZY_LAZY_HPP_
 #define LAZY_LAZY_HPP_
 
-#if __cplusplus < 201103L
-# error This file requires compiler and library support for the ISO C++11 standard.
-#endif
-
 #include <type_traits>
 #include <functional>
 #include <tuple>
