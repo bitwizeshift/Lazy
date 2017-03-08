@@ -36,326 +36,818 @@
  * SOFTWARE.
  */
 
-#ifndef LAZY_LAZY_HPP_
-#define LAZY_LAZY_HPP_
+#ifndef LAZY_LAZY_HPP
+#define LAZY_LAZY_HPP
 
-#include "detail/lazy_traits.hpp"
+#include <type_traits>      // various type-traits
+#include <initializer_list> // std::initializer_list
+#include <utility>          // std::move
+#include <functional>       // std::function
 
-#include <type_traits>
-#include <functional>
-#include <tuple>
+namespace lazy {
 
-namespace lazy{
+  /// \brief Constructs an instance of type \p T with the given \p tuple
+  ///        at the memory location specified in \p ptr.
+  ///
+  /// This forwards the arguments from the \p tuple to the constructor
+  /// of T, as if by calling make_from_tuple
+  ///
+  /// \param ptr   The memory location to construct into
+  /// \param tuple The tuple containing arguments to forward to T
+  /// \return Pointer ot the initialzied memory (cast of \p ptr)
+  template<typename T, typename Tuple>
+  T* uninitialized_tuple_construct_at( void* ptr, Tuple&& tuple );
 
-  ////////////////////////////////////////////////////////////////////////////
+  namespace detail {
+
+    template <typename T, typename Tuple, std::size_t... I>
+    inline T* uninitialized_tuple_construct_at_impl( void* ptr, Tuple&& t, std::index_sequence<I...> )
+    {
+      new (ptr) T(std::get<I>(std::forward<Tuple>(t))...);
+      return static_cast<T*>(ptr);
+    }
+
+  } // namespace detail
+
+  template<typename T, typename Tuple>
+  inline T* uninitialized_tuple_construct_at( void* ptr, Tuple&& tuple )
+  {
+    return detail::uninitialized_tuple_construct_at_impl<T>(
+      ptr,
+      std::forward<Tuple>(tuple),
+      std::make_index_sequence<std::tuple_size<std::decay_t<Tuple>>::value>()
+    );
+  }
+
+  /// \brief Calls the destructor of the object pointed to by p, as if by p->~T().
+  ///
+  /// \param p a pointer to the object to be destroyed
+  template<typename T>
+  void destroy_at( T* p );
+
+  template<typename T>
+  inline void destroy_at( T* p )
+  {
+    p->~T();
+  }
+
+  //--------------------------------------------------------------------------
+  // In Place
+  //--------------------------------------------------------------------------
+
+  namespace detail {
+
+    /// \brief Used to disambiguate unspecialized in_place
+    struct in_place_ctor_tag{};
+
+    /// \brief Used to disambiguate typed in-place
+    template<typename T>
+    struct in_place_ctor_type_tag{};
+
+    /// \brief Used to disambiguate indexed in-place
+    template<std::size_t I>
+    struct in_place_ctor_index_tag{};
+
+  } // namespace detail
+
+  /// \brief in_place_tag is an empty struct type used as the return types
+  ///        of the in_place functions for disambiguation.
+  struct in_place_tag
+  {
+    in_place_tag() = delete;
+    in_place_tag(int){}
+  };
+
+  /// \brief This function is a special disambiguation tag for variadic functions, used in
+  ///        any and optional
+  ///
+  /// \note Calling this function results in undefined behaviour.
+#ifndef DOXYGEN_BUILD
+  inline in_place_tag in_place( detail::in_place_ctor_tag = detail::in_place_ctor_tag() ){ return {0}; }
+#else
+  in_place_tag in_place( /* implementation defined */ );
+#endif
+
+  /// \brief This function is a special disambiguation tag for variadic functions, used in
+  ///        any and optional
+  ///
+  /// \note Calling this function results in undefined behaviour.
+  template<typename T>
+#ifndef DOXYGEN_BUILD
+  inline in_place_tag in_place( detail::in_place_ctor_type_tag<T> = detail::in_place_ctor_type_tag<T>() ){ return {0}; }
+#else
+  in_place_Tag in_place( /* implementation defined */ );
+#endif
+
+  /// \brief This function is a special disambiguation tag for variadic functions, used in
+  ///        any and optional
+  ///
+  /// \note Calling this function results in undefined behaviour.
+  template<std::size_t I>
+#ifndef DOXYGEN_BUILD
+  inline in_place_tag in_place( detail::in_place_ctor_index_tag<I> = detail::in_place_ctor_index_tag<I>() ){ return {0}; }
+#else
+  in_place_tag in_place( /* implementation defined */ );
+#endif
+
+  /// \brief A tag type used for dispatching in_place calls
+  using in_place_t = in_place_tag(&)( detail::in_place_ctor_tag );
+
+  /// \brief A tag type used for type-based dispatching in_place calls
+  template<typename T>
+  using in_place_type_t = in_place_tag(&)( detail::in_place_ctor_type_tag<T> );
+
+  /// \brief A tag type used for type-based dispatching in_place calls
+  template <std::size_t I>
+  using in_place_index_t = in_place_tag(&)( detail::in_place_ctor_index_tag<I> );
+
+  template<typename> class Lazy;
+
+  namespace detail {
+
+    template<typename...>
+    struct voidify{ using type = void; };
+
+    template<typename...Ts>
+    using void_t = typename voidify<Ts...>::type;
+
+    template<typename Fn, typename R = void, typename = void>
+    struct is_callable : std::false_type{};
+
+    template<typename Fn>
+    struct is_callable<Fn,void,void_t<std::result_of_t<Fn>>>
+      : std::true_type{};
+
+    template<typename Func, typename R>
+    struct is_callable<Func,R, void_t<std::result_of_t<Func>>>
+      : std::is_convertible<std::result_of_t<Func>,R>{};
+
+    template<bool B>
+    using bool_constant = std::integral_constant<bool,B>;
+
+    template<typename...>
+    struct conjunction : std::true_type { };
+
+    template<typename B1>
+    struct conjunction<B1>
+      : B1 { };
+
+    template<typename B1, typename... Bn>
+    struct conjunction<B1, Bn...>
+      : std::conditional_t<B1::value != false, conjunction<Bn...>, B1>  {};
+
+    template<typename...>
+    struct disjunction : std::false_type { };
+
+    template<typename B1>
+    struct disjunction<B1>
+      : B1 { };
+
+    template<typename B1, typename... Bn>
+    struct disjunction<B1, Bn...>
+      : std::conditional_t<B1::value != false, B1, conjunction<Bn...>>  {};
+
+    template<typename B>
+    struct negation : bool_constant<!B::value>{ };
+
+    template<typename T, typename U>
+    struct lazy_is_enabled_ctor_base : negation<
+      disjunction<
+        std::is_constructible<T, Lazy<U>&>,
+        std::is_constructible<T, const Lazy<U>&>,
+        std::is_constructible<T, Lazy<U>&&>,
+        std::is_constructible<T, const Lazy<U>&&>,
+
+        std::is_convertible<Lazy<U>&, T>,
+        std::is_convertible<const Lazy<U>&, T>,
+        std::is_convertible<Lazy<U>&&, T>,
+        std::is_convertible<const Lazy<U>&&, T>
+      >
+    >{};
+
+    template<typename T, typename U>
+    struct lazy_is_enabled_copy_ctor : conjunction<
+      lazy_is_enabled_ctor_base<T,U>,
+      std::is_constructible<T,const U&>
+    >{};
+
+    template<typename T, typename U>
+    struct lazy_is_enabled_move_ctor : conjunction<
+    lazy_is_enabled_ctor_base<T,U>,
+      std::is_constructible<T, U&&>
+    >{};
+
+    template<typename T, typename U>
+    struct lazy_is_enabled_assignment_base : negation<
+      disjunction<
+        std::is_constructible<T, Lazy<U>&>,
+        std::is_constructible<T, const Lazy<U>&>,
+        std::is_constructible<T, Lazy<U>&&>,
+        std::is_constructible<T, const Lazy<U>&&>,
+
+        std::is_convertible<Lazy<U>&, T>,
+        std::is_convertible<const Lazy<U>&, T>,
+        std::is_convertible<Lazy<U>&&, T>,
+        std::is_convertible<const Lazy<U>&&, T>,
+
+        std::is_assignable<T&, Lazy<U>&>,
+        std::is_assignable<T&, const Lazy<U>&>,
+        std::is_assignable<T&, Lazy<U>&&>,
+        std::is_assignable<T&, const Lazy<U>&&>
+      >
+    >{};
+
+    template<typename T, typename U>
+    struct lazy_is_enabled_copy_assignment : conjunction<
+      lazy_is_enabled_assignment_base<T,U>,
+      std::is_assignable<T&, const U&>,
+      std::is_constructible<T, const U&>
+    >{};
+
+    template<typename T, typename U>
+    struct lazy_is_enabled_move_assignment : conjunction<
+      lazy_is_enabled_assignment_base<T,U>,
+      std::is_assignable<T&, U&&>,
+      std::is_constructible<T, U&&>
+    >{};
+
+    template<typename T, typename U>
+    struct lazy_is_direct_initializable : conjunction<
+      std::is_constructible<T, U&&>,
+      negation<std::is_same<std::decay_t<U>,in_place_t>>,
+      negation<std::is_same<std::decay_t<U>,Lazy<T>>>
+    >{};
+
+    template<typename T, typename U>
+    struct lazy_is_direct_init_assignable : conjunction<
+      negation<std::is_same<std::decay_t<U>,Lazy<T>>>,
+      std::is_constructible<T,U>,
+      std::is_assignable<T,U>,
+      disjunction<
+        negation<std::is_scalar<U>>,
+        negation<std::is_same<std::decay_t<U>,T>>
+      >
+    >{};
+
+  } // namespace detail
+
+  //////////////////////////////////////////////////////////////////////////
   /// \brief Lazy class used for lazy-loading any type
   ///
   /// The stored lazy-loaded class, \c T, will always be instantiated
   /// before being accessed, and destructed when put out of scope.
   ///
   /// \tparam T the type contained within this \c Lazy
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
   template<typename T>
-  class Lazy final
+  class Lazy
   {
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     // Public Member Types
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
   public:
 
-    using this_type = Lazy<T>; ///< Instance of this type
+    using value_type = T; ///< The type to lazily construct
 
-    using value_type = T;  ///< The underlying type of this Lazy
-    using pointer    = T*; ///< The pointer type of the Lazy
-    using reference  = T&; ///< The reference type of the Lazy
-
-    //------------------------------------------------------------------------
-    // Construction / Destruction / Assignment
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
+    // Constructors
+    //----------------------------------------------------------------------
   public:
 
-    /// \brief Default constructor; no initialization takes place
-    Lazy( );
+    /// \brief Constructs a lazy type that will be default-constructed
+    Lazy() noexcept;
 
-    /// \brief Constructs a \c Lazy given the \p constructor and \p destructor
-    ///        functions
-    ///
-    /// \note The \p constructor function must return a \c std::tuple containing
-    ///       the arguments to pass to \c T's constructor for lazy-construction
-    ///
-    /// \param constructor function to use for construction
-    /// \param destructor  function to use prior to destruction
-    template<
-      typename CtorFunc,
-      typename DtorFunc = void(value_type&),
-      typename = typename std::enable_if<detail::is_callable<CtorFunc>::value>::type,
-      typename = typename std::enable_if<detail::is_callable<DtorFunc>::value>::type
-    >
-    explicit Lazy( const CtorFunc& constructor,
-                   const DtorFunc& destructor = default_destructor );
+    //----------------------------------------------------------------------
 
-    /// \brief Constructs a \c Lazy by copying another \c Lazy
+    /// \brief Copy-constructs a lazy type
     ///
-    /// \note If \p rhs is initialized, then this copy will also be initialized
+    /// If the lazy being copied was already initialized, this too will
+    /// be initialized. Otherwise this will be uninitialized
     ///
-    /// \param rhs the \c Lazy to copy
-    Lazy( const Lazy<T>& rhs );
+    /// \param other the lazy being copied
+    Lazy( const Lazy& other );
 
-    /// \brief Constructs a \c Lazy by moving another \c Lazy
+    /// \brief Move-constructs a lazy type
     ///
-    /// \note If \p rhs is initialized, then this moved version will
-    ///       also be initialized
+    /// If the lazy being moved was already initialized, this too will
+    /// be initialized. Otherwise this will be uninitialized
     ///
-    /// \param rhs the \c Lazy to move
-    Lazy( Lazy<T>&& rhs );
+    /// \param other the lazy being moved
+    Lazy( Lazy&& other );
 
-    /// \brief Constructs a \c Lazy by calling \c T's copy constructor
-    ///
-    /// \note This does not initialize the \c Lazy. Instead, it stores this value as
-    ///       a copy and move-constructs it later, if necessary
-    ///
-    /// \param rhs the \c T to copy
-    explicit Lazy( const value_type& rhs );
+    //----------------------------------------------------------------------
 
-    /// \brief Constructs a \c Lazy from a given rvalue \c T
+    /// \brief Copy-constructs a lazy type from a convertible lazy
     ///
-    /// \note This does not initialize the \c Lazy. Instead, it stores this value as
-    ///       a copy and move-constructs it later, if necessary
+    /// If the lazy being copied was already initialized, this too will
+    /// be initialized. Otherwise this will be uninitialized
     ///
-    /// \param rhs the \c T to move
-    explicit Lazy( value_type&& rhs );
+    /// \note This constructor is explicit if const U& is convertible to T
+    ///
+    /// \param other the lazy to copy
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, std::enable_if_t<detail::lazy_is_enabled_copy_ctor<T,U>::value && !std::is_convertible<const U&, T>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    Lazy( const Lazy<U>& other );
 
-    //------------------------------------------------------------------------
+    /// \copydoc Lazy( const Lazy<U>& )
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, std::enable_if_t<detail::lazy_is_enabled_copy_ctor<T,U>::value && std::is_convertible<const U&, T>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    explicit Lazy( const Lazy<U>& other );
 
-    /// \brief Destructs this \c Lazy and it's \c T
-    ~Lazy( );
+    //----------------------------------------------------------------------
 
-    //------------------------------------------------------------------------
+    /// \brief Move-constructs a lazy type from a convertible lazy
+    ///
+    /// If the lazy being moved was already initialized, this too will
+    /// be initialized. Otherwise this will be uninitialized
+    ///
+    /// \note This constructor is explicit if U&& is convertible to T
+    ///
+    /// \param other the lazy to copy
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, std::enable_if_t<detail::lazy_is_enabled_move_ctor<T,U>::value && !std::is_convertible<U&&, T>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    Lazy( Lazy<U>&& other );
 
-    /// \brief Assigns a \c Lazy to this \c Lazy
-    ///
-    /// \note This will construct a new \c T if the \c Lazy is not already
-    ///       initialized, otherwise it will assign
-    ///
-    /// \param rhs the \c Lazy on the right-side of the assignment
-    /// \return reference to (*this)
-    this_type& operator=( const this_type& rhs );
+    /// \copydoc Lazy( Lazy<U>&& )
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, std::enable_if_t<detail::lazy_is_enabled_move_ctor<T,U>::value && std::is_convertible<U&&, T>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    explicit Lazy( Lazy<U>&& other );
 
-    /// \brief Assigns a \c Lazy to this \c Lazy
-    ///
-    /// \note This will construct a new \c T if the \c Lazy is not already
-    ///       initialized, otherwise it will assign
-    ///
-    /// \param rhs the rvalue \c Lazy on the right-side of the assignment
-    /// \return reference to (*this)
-    this_type& operator=( this_type&& rhs );
+    //----------------------------------------------------------------------
 
-    /// \brief Assigns a \c T to this \c Lazy
+    /// \brief Constructs an uninitialized lazy that will be constructed
+    ///        with the arguments specified in \p args...
     ///
-    /// \note This will construct a new \c T if the \c Lazy is not already
-    ///       initialized, otherwise it will assign
+    /// \note The argument types must be move-constructible if passed by
+    ///       rvalue, or copy-constructible if passed by lvalue
     ///
-    /// \param rhs the \c T on the right-side of the assignment
-    /// \return reference to (\c ptr())
-    value_type& operator=( const value_type& rhs );
+    /// \param args the arguments to use for deferred construction
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename... Args, typename = std::enable_if_t<std::is_constructible<T,Args...>::value>>
+#else
+    template<typename... Args>
+#endif
+    explicit Lazy( in_place_t, Args&&... args );
 
-    /// \brief Assigns an rvalue \c T to this \c Lazy
+    /// \brief Constructs an uninitialized lazy that will be constructed
+    ///        with the arguments specified in \p ilist and \p args...
     ///
-    /// \note This will construct a new \c T if the \c Lazy is not already
-    ///       initialized, otherwise it will assign
-    ///
-    /// \param rhs the \c T on the right-side of the assignment
-    /// \return reference to (\c ptr())
-    value_type& operator=( value_type&& rhs );
+    /// \param ilist the initializer list to forward for deferred construction
+    /// \param args the arguments to use for deferred construction
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, typename... Args, typename = std::enable_if_t<std::is_constructible<T,std::initializer_list<U>,Args...>::value>>
+#else
+    template<typename U, typename... Args>
+#endif
+    explicit Lazy( in_place_t,
+                    std::initializer_list<U> ilist,
+                    Args&&... args );
 
-    //------------------------------------------------------------------------
-    // Casting
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
+
+    /// \brief Constructs this lazy by deferring construction of the underlying
+    ///        type as if by direct initializing by type U
+    ///
+    /// \param value the value to use to use to initialzie the lazy
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U = T, std::enable_if_t<detail::lazy_is_direct_initializable<T,U>::value && !detail::is_callable<U&>::value && std::is_convertible<U&&, T>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    Lazy( U&& value );
+
+    /// \copydoc Lazy( U&& )
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U = T, std::enable_if_t<detail::lazy_is_direct_initializable<T,U>::value && !detail::is_callable<U&>::value && !std::is_convertible<U&&, T>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    explicit Lazy( U&& value );
+
+    //----------------------------------------------------------------------
+
+    /// \brief Destructs this lazy, and the contents of the lazy
+    ~Lazy();
+
+    //----------------------------------------------------------------------
+    // Assignment
+    //----------------------------------------------------------------------
   public:
 
-    /// \brief Converts this \c Lazy into a reference
+    /// \brief Copy-assigns a lazy from another lazy
     ///
-    /// \return the reference to the lazy-loaded object
-    explicit operator reference() const;
+    /// If this lazy is currently initialized, \p other is copy-assigned.
+    ///
+    /// If both this and the other lazy is not initialized, the construction
+    /// is deferred.
+    ///
+    /// \param other the other lazy to copy
+    Lazy& operator=( const Lazy& other );
 
-    /// \brief Checks whether this \c Lazy has an instantiated object
+    /// \brief Move-assigns a lazy from another lazy
     ///
-    /// \return \c true if this lazy has an instantiated object
+    /// If this lazy is currently initialized, \p other is move-assigned.
+    ///
+    /// If both this and the other lazy is not initialized, the construction
+    /// is deferred.
+    ///
+    /// \param other the other lazy to copy
+    Lazy& operator=( Lazy&& other );
+
+    /// \brief Copy-assigns a lazy from a convertible lazy type
+    ///
+    /// If this lazy is currently initialized, \p other is copy-assigned.
+    ///
+    /// If both this and the other lazy is not initialized, only other
+    /// will be initialized. This is needed to construct the type T from
+    /// the value of type U.
+    ///
+    /// \param other the other lazy to copy
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, std::enable_if_t<detail::lazy_is_enabled_copy_assignment<T,U>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    Lazy& operator=( const Lazy<U>& other );
+
+    /// \brief Move-assigns a lazy from a convertible lazy type
+    ///
+    /// If this lazy is currently initialized, \p other is move-assigned.
+    ///
+    /// If both this and the other lazy is not initialized, only other
+    /// will be initialized. This is needed to construct the type T from
+    /// the value of type U.
+    ///
+    /// \param other the other lazy to copy
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, std::enable_if_t<detail::lazy_is_enabled_move_assignment<T,U>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    Lazy& operator=( Lazy<U>&& other );
+
+    /// \brief Direct initializes a value using perfect-forwarding
+    ///
+    /// \param value the value to initialize this lazy with
+#ifndef BIT_DOXYGEN_BUILD
+    template<typename U, std::enable_if_t<detail::lazy_is_direct_init_assignable<T,U>::value>* = nullptr>
+#else
+    template<typename U>
+#endif
+    Lazy& operator=( U&& value );
+
+    //----------------------------------------------------------------------
+    // Modifiers
+    //----------------------------------------------------------------------
+  public:
+
+    /// \brief Explicitly initializes this lazy if not initialized before
+    void initialize() const;
+
+    /// \brief Destroys any contained value, if one is contained
+    ///
+    /// The arguments to be used for construction are maintained for
+    /// future invocations, and can be changed by a call to \c operator=
+    void reset();
+
+    /// \brief Swaps this with the \p other lazy
+    ///
+    /// \param other the lazy to swap with this
+    void swap( Lazy& other );
+
+    //----------------------------------------------------------------------
+    // Observers
+    //----------------------------------------------------------------------
+  public:
+
+    /// \brief Returns \c true if this lazy contains a value (is initialized)
+    ///
+    /// This is an alias of has_value
     explicit operator bool() const noexcept;
 
-    //------------------------------------------------------------------------
-    // Operators
-    //------------------------------------------------------------------------
-  public:
-
-    /// \brief Swapperator class for no-exception swapping
+    /// \brief Determines whether this lazy contains a value (is initialized)
     ///
-    /// \param rhs the rhs to swap
-    void swap(Lazy<T>& rhs) noexcept;
+    /// \return \c true when initialized, \c false otherwise
+    bool has_value() const noexcept;
 
-    /// \brief Boolean to check if this \c Lazy is initialized.
-    ///
-    /// \return \c true if the underlying type \c T is initialized.
-    bool is_initialized() const noexcept;
+    //----------------------------------------------------------------------
 
-    /// \brief Gets a pointer to the underlying type
+    /// \brief Returns a pointer to the underlying lazy type
     ///
-    /// \note This has been added to have a similar API to smart pointers
+    /// \note It is undefined behaviour to call this if has_value returns
+    ///       \c false
     ///
-    /// \return the pointer to the underlying type
-    pointer get() const;
+    /// \return a pointer to the contained type
+    value_type* operator->();
 
-    /// \brief Dereferences this \c Lazy object into the lazy-loaded object
-    ///
-    /// \return a constant reference to the lazy-loaded object
-    reference operator*() const;
+    /// \copydoc operator->()
+    const value_type* operator->() const;
 
-    /// \brief Dereferences this \c Lazy object into the lazy-loaded object
+    /// \brief Returns a reference to the underlying lazy type
     ///
-    /// \return a pointer to the lazy-loaded object
-    pointer operator->() const;
+    /// \note It is undefined behaviour to call this if has_value returns
+    ///       \c false
+    ///
+    /// \return a reference to the contained type
+    value_type& operator*() &;
 
-    //------------------------------------------------------------------------
+    /// \copydoc operator*() &
+    const value_type& operator*() const &;
+
+    /// \copydoc operator*() &
+    value_type&& operator*() &&;
+
+    /// \copydoc operator*() &
+    const value_type&& operator*() const &&;
+
+    //----------------------------------------------------------------------
+
+    /// \brief Returns a reference to the contained value
+    ///
+    /// If the lazy is not initialized prior to calling this, it will be
+    /// initialized here
+    ///
+    /// \return a reference to the contained value
+    value_type& value() &;
+
+    /// \copydoc value() &
+    const value_type& value() const &;
+
+    /// \copydoc value() &
+    value_type&& value() &&;
+
+    /// \copydoc value() &
+    const value_type&& value() const &&;
+
+    //----------------------------------------------------------------------
+
+    /// \brief Returns the contained value, if initialized,
+    ///        otherwise returns \p default_value
+    ///
+    /// \param default_value the value to return if not initialized
+    /// \return the contained value if initialized, \p default_value otherwise
+    template<typename U>
+    value_type value_or( U&& default_value ) const &;
+
+    /// \copydoc value_or( U&& default_value ) &&
+    template<typename U>
+    value_type value_or( U&& default_value ) &&;
+
+    //----------------------------------------------------------------------
     // Private Member Types
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
   private:
 
-    /// \brief Constructor tag for tag-dispatching VA Arguments
-    struct ctor_va_args_tag{};
+    using storage_type = std::aligned_storage_t<sizeof(T),alignof(T)>;
 
-    using unqualified_pointer = typename std::remove_cv<T>::type*;
-    using ctor_function_type  = std::function<void()>;
-    using dtor_function_type  = std::function<void(T&)>;
+    struct ctor_tag{};
 
-    using storage_type = typename std::aligned_storage<sizeof(T),alignof(T)>::type;
-
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     // Private Members
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
   private:
 
-    mutable storage_type m_storage;        ///< The storage to hold the lazy type
-    mutable bool         m_is_initialized; ///< Is the type initialized?
-    ctor_function_type   m_constructor;    ///< The construction function
-    dtor_function_type   m_destructor;     ///< The destruction function
+    std::function<void(void* ptr)> m_ctor_function;  ///< The construction function
+    mutable storage_type           m_storage;        ///< The storage type
+    mutable bool                   m_is_initialized; ///< Is this lazy initialized
 
-    //------------------------------------------------------------------------
-    // Private Static Member Functions
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
+    // Private Constructors
+    //----------------------------------------------------------------------
   private:
 
-    /// \brief A default destructor function for this Lazy object
+    /// \brief Constructs a lazy given a construction function
     ///
-    /// \param x the \c T type to be destructed
-    static void default_destructor( value_type& x ) noexcept;
-
-    //------------------------------------------------------------------------
-    // Private Constructor
-    //------------------------------------------------------------------------
-  private:
-
-    /// \brief Constructs a \c Lazy by constructing it's \c T with its constructor
+    /// \note The construction function must return a std::tuple containing the
+    ///       arguments to forward to the constructor.
     ///
-    /// \param tag  unused tag for dispatching to VA constructor
-    /// \param args arguments to \c T's constructor
-    template<typename...Args>
-    explicit Lazy( ctor_va_args_tag tag, Args&&...args );
+    /// \param tag the tag used for tag dispatch
+    /// \param ctor the function specifying arguments to pass to the constructor
+    template<typename Ctor>
+    explicit Lazy( ctor_tag tag, Ctor&& ctor );
 
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     // Private Member Functions
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
   private:
 
-    /// \brief Gets a pointer to the data stored in this \c Laz
-    ///
-    /// \return the constant pointer to the object
-    unqualified_pointer ptr() const noexcept;
+    /// \brief Retrieves a pointer to the internal lazy target
+    value_type* ptr() const;
 
-    /// \brief Forcibly initializes the \c Lazy
+    /// \brief Lazy-constructs the underlying type
     void lazy_construct() const;
 
-    /// \brief Constructs a \c Lazy object using \c T's copy constructor
-    ///
-    /// \param x Instance of \c T to copy.
-    void construct( const value_type& x ) const;
+    /// \brief Destroys the underlying type of the lazy
+    void destruct();
 
-    /// \brief Constructs a \c Lazy object using \c T's move constructor
-    ///
-    /// \param x Instance of rvalue \c T to copy
-    void construct( value_type&& x ) const;
-
-    /// \brief Constructs a \c Lazy object using the arguments for \c T's constructor
-    ///
-    /// \param tag  tag to dispatch to this VA args constructor
-    /// \param args the arguments to forward to the constructor
-    template<typename...Args>
-    void construct( ctor_va_args_tag tag, Args&&...args ) const;
-
-    /// \brief Constructs a \c Lazy object using the arguments provided in a
-    ///        \c std::tuple for \c T's constructor
-    ///
-    /// \param tag  the tag for tag-dispatching
-    /// \param args the arguments to forward to the constructor
-    template<typename...Args>
-    void construct( const std::tuple<Args...>& args ) const;
-
-    /// \brief Constructs a \c lazy object by passing all values stored in a
-    ///        \c std::tuple to \c T's constructor
-    ///
-    /// \param unused unused parameter for getting index list
-    template<typename...Args, std::size_t...Is>
-    void tuple_construct( const std::tuple<Args...>& args,
-                          const detail::index_sequence<Is...>& unused ) const noexcept( std::is_nothrow_constructible<T,Args...>::value );
-
-    //------------------------------------------------------------------------
-
-    /// \brief Destructs the \c Lazy object
-    void destruct( ) const;
-
-    //------------------------------------------------------------------------
-
-    /// \brief Copy-assigns type at \c rhs
-    ///
-    /// \param rhs the value to assign
-    void assign( const value_type& rhs ) const noexcept( std::is_nothrow_copy_assignable<T>::value );
-
-    /// \brief Copy-assigns type at \c rhs
-    ///
-    /// \param rhs the value to assign
-    void assign( value_type&& rhs ) const noexcept( std::is_nothrow_move_assignable<T>::value );
-
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     // Friends
-    //------------------------------------------------------------------------
+    //----------------------------------------------------------------------
+  private:
 
-    template<typename U,typename...Args>
-    friend Lazy<U> make_lazy( Args&&...args );
+    template<typename>
+    friend class Lazy;
+
+    template<typename U,typename Ctor>
+    friend Lazy<U> make_lazy_generator( Ctor&& );
+
   };
 
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
   // Utilities
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
 
-  /// \brief Convenience utility to construct a \c Lazy object by specifying
-  ///        \c T's constructor signature.
+  /// \brief Retrieves a hash of the underlying lazy, instantiating it if
+  ///        not already instantiated
   ///
-  /// The arguments are stored by copy until the object is constructed in order
-  /// to avoid dangling references.
+  /// \param val the value to retrieve the has of
+  /// \return the hash of the lazy
+  template<typename T>
+  std::size_t hash_value( const Lazy<T>& val );
+
+  //------------------------------------------------------------------------
+
+  /// \brief Makes a lazy type from the given arguments
   ///
-  /// \param args the arguments to the constructor
-  /// \return an instance of the \c Lazy object
+  /// This is just a wrapper around Lazy<T>( in_place, args... );
+  ///
+  /// \param args the arguments to forward to T's constructor
+  /// \return the lazy instance
   template<typename T, typename...Args>
   Lazy<T> make_lazy( Args&&...args );
 
-  /// \brief Implementation of \c swap for custom swapperations using ADL
+
+  /// \brief Makes a lazy type from the given arguments
   ///
-  /// \param lhs the left-hand \c Lazy object
-  /// \param rhs the right-hand \c Lazy object
+  /// This is just a wrapper around Lazy<T>( in_place, ilist, args... );
+  ///
+  /// \param ilist an initializer list to forward to T's constructor
+  /// \param args the arguments to forward to T's constructor
+  /// \return the lazy instance
+  template<typename T, typename U, typename...Args>
+  Lazy<T> make_lazy( std::initializer_list<U> ilist, Args&&...args );
+
+  /// \brief Makes a lazy type that uses a generator function to generate
+  ///        the arguments that will be forwarded to T's constructor
+  ///
+  /// \tparam T The type of the lazy to construct
+  /// \param ctor A function that returns a tuple of arguments used to
+  ///             forward to T's constructor
+  /// \return The newly constructed lazy
+  template<typename T, typename Ctor>
+  Lazy<T> make_lazy_generator( Ctor&& ctor );
+
+  //-----------------------------------------------------------------------
+
+  /// \brief Swaps the contents of the lazy from \p lhs and \p rhs
+  ///
+  /// \param lhs the left lazy to swap
+  /// \param rhs the right lazy to swap
   template<typename T>
-  void swap(Lazy<T>& lhs, Lazy<T>& rhs) noexcept;
+  void swap( Lazy<T>& lhs, Lazy<T>& rhs );
+
+  //------------------------------------------------------------------------
+  // Comparisons
+  //------------------------------------------------------------------------
+
+  /// \brief Compares the left and right lazy elements together for equality,
+  ///        using the underlying type's operator==
+  ///
+  /// \note This will instantiate the lazy if it was not previously
+  ///       instantiated
+  ///
+  /// \param lhs the left argument
+  /// \param rhs the right argument
+  template<typename T>
+  bool operator==( const Lazy<T>& lhs, const Lazy<T>& rhs );
+
+  /// \copydoc operator==( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator==( const Lazy<T>& lhs, const T& rhs );
+
+  /// \copydoc operator==( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator==( const T& lhs, const Lazy<T>& rhs );
+
+  //------------------------------------------------------------------------
+
+  /// \brief Compares the left and right lazy elements together for inequality,
+  ///        using the underlying type's operator!=
+  ///
+  /// \note This will instantiate the lazy if it was not previously
+  ///       instantiated
+  ///
+  /// \param lhs the left argument
+  /// \param rhs the right argument
+  template<typename T>
+  bool operator!=( const Lazy<T>& lhs, const Lazy<T>& rhs );
+
+  /// \copydoc operator!=( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator!=( const Lazy<T>& lhs, const T& rhs );
+
+  /// \copydoc operator!=( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator!=( const T& lhs, const Lazy<T>& rhs );
+
+  //------------------------------------------------------------------------
+
+  /// \brief Determines if \p lhs < \p rhs, using the underlying type's
+  ///        \c operator<
+  ///
+  /// \note This will instantiate the lazy if it was not previously
+  ///       instantiated
+  ///
+  /// \param lhs the left argument
+  /// \param rhs the right argument
+  template<typename T>
+  bool operator<( const Lazy<T>& lhs, const Lazy<T>& rhs );
+
+  /// \copydoc operator<( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator<( const Lazy<T>& lhs, const T& rhs );
+
+  /// \copydoc operator<( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator<( const T& lhs, const Lazy<T>& rhs );
+
+  //------------------------------------------------------------------------
+
+  /// \brief Determines if \p lhs <= \p rhs, using the underlying type's
+  ///        \c operator<=
+  ///
+  /// \note This will instantiate the lazy if it was not previously
+  ///       instantiated
+  ///
+  /// \param lhs the left argument
+  /// \param rhs the right argument
+  template<typename T>
+  bool operator<=( const Lazy<T>& lhs, const Lazy<T>& rhs );
+
+  /// \copydoc operator<=( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator<=( const Lazy<T>& lhs, const T& rhs );
+
+  /// \copydoc operator<=( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator<=( const T& lhs, const Lazy<T>& rhs );
+
+  //------------------------------------------------------------------------
+
+  /// \brief Determines if \p lhs > \p rhs, using the underlying type's
+  ///        \c operator>
+  ///
+  /// \note This will instantiate the lazy if it was not previously
+  ///       instantiated
+  ///
+  /// \param lhs the left argument
+  /// \param rhs the right argument
+  template<typename T>
+  bool operator>( const Lazy<T>& lhs, const Lazy<T>& rhs );
+
+  /// \copydoc operator>( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator>( const Lazy<T>& lhs, const T& rhs );
+
+  /// \copydoc operator>( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator>( const T& lhs, const Lazy<T>& rhs );
+
+  //------------------------------------------------------------------------
+
+  /// \brief Determines if \p lhs >= \p rhs, using the underlying type's
+  ///        \c operator>=
+  ///
+  /// \note This will instantiate the lazy if it was not previously
+  ///       instantiated
+  ///
+  /// \param lhs the left argument
+  /// \param rhs the right argument
+  template<typename T>
+  bool operator>=( const Lazy<T>& lhs, const Lazy<T>& rhs );
+
+  /// \copydoc operator>=( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator>=( const Lazy<T>& lhs, const T& rhs );
+
+  /// \copydoc operator>=( const Lazy<T>&, const Lazy<T>& )
+  template<typename T>
+  bool operator>=( const T& lhs, const Lazy<T>& rhs );
 
 } // namespace lazy
 
 #include "detail/Lazy.inl"
 
-#endif /* LAZYLAZY_HPP_ */
+#endif /* LAZYLAZY_HPP */

@@ -1,9 +1,10 @@
 /**
- * \file unit.cpp
+ * \file main.test.cpp
  *
- * \brief Main for the catch unit tests
+ * \brief Main unit test to dispatch into the other unit tests.
  *
  * \author Matthew Rodusek (matthew.rodusek@gmail.com)
  */
+
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"

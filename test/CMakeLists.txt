@@ -1,33 +1,40 @@
-cmake_minimum_required(VERSION 3.0)
-project(unit_test LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.1)
 
 enable_testing()
 
-# The unit test executable.
-set(UNITTEST_TARGET_NAME "unit_tests")
-add_executable("unit_tests"
-               "catch.hpp"
-               "unit.cpp"
-               "unit-assignment.cpp"
-               "unit-casting.cpp"
-               "unit-constructor.cpp"
-               "unit-operators.cpp"
+find_package(Catch)
+
+#-----------------------------------------------------------------------------
+# Unit Test Library
+#-----------------------------------------------------------------------------
+
+set(sources
+      main.test.cpp
+      lazy/Lazy.test.cpp
 )
 
-set_target_properties(${UNITTEST_TARGET_NAME} PROPERTIES
-    CXX_STANDARD 11
+add_executable(Lazy_test ${sources})
+
+target_link_libraries(Lazy_test PRIVATE Lazy "philsquared::Catch")
+set_target_properties(Lazy_test PROPERTIES
+    CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     COMPILE_DEFINITIONS "$<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>"
     COMPILE_OPTIONS "$<$<CXX_COMPILER_ID:MSVC>:/EHsc;$<$<CONFIG:Release>:/Od>>"
 )
 
-target_include_directories(${UNITTEST_TARGET_NAME} PRIVATE "../include")
+#-----------------------------------------------------------------------------
+# Testing
+#-----------------------------------------------------------------------------
 
-add_test(NAME "${UNITTEST_TARGET_NAME}_default"
-         COMMAND ${UNITTEST_TARGET_NAME}
-         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+add_test(NAME "Lazy_test_default"
+         COMMAND "Lazy_test"
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
-add_test(NAME "${UNITTEST_TARGET_NAME}_all"
-         COMMAND ${UNITTEST_TARGET_NAME} "*"
-         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+
+#-----------------------------------------------------------------------------
+
+add_test(NAME "Lazy_test_all"
+         COMMAND "Lazy_test" "*"
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )

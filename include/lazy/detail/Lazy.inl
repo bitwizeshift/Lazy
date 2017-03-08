@@ -1,87 +1,183 @@
-namespace lazy{
+namespace lazy {
 
-  //--------------------------------------------------------------------------
-  // Constructors / Destructor / Assignment
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
+  // Constructors
+  //------------------------------------------------------------------------
 
   template<typename T>
   inline Lazy<T>::Lazy()
-    : m_storage(),
-      m_is_initialized(false),
-      m_constructor([this](){this->construct(ctor_va_args_tag());}),
-      m_destructor(default_destructor)
+    noexcept
+    : m_ctor_function(+[](void* ptr){ uninitialized_tuple_construct_at<T>(ptr, std::forward_as_tuple() ); }),
+      m_storage(),
+      m_is_initialized(false)
   {
-    static_assert(std::is_default_constructible<T>::value,"No matching default constructor for type T");
+
   }
 
-  template<typename T>
-  template<typename CtorFunc,typename DtorFunc,typename,typename>
-  inline Lazy<T>::Lazy( const CtorFunc& constructor,
-                        const DtorFunc& destructor )
-    : m_storage(),
-      m_is_initialized(false),
-      m_constructor([this,constructor](){this->construct(constructor());}),
-      m_destructor(destructor)
-  {
-    using return_type = typename detail::function_traits<CtorFunc>::result_type;
-
-    static_assert(detail::is_tuple<return_type>::value,"Lazy-construction functions must return tuples containing constructor arguments");
-    static_assert(detail::is_tuple_constructible<T,return_type>::value, "No matching constructor for type T with given arguments");
-  }
+  //------------------------------------------------------------------------
 
   template<typename T>
-  inline Lazy<T>::Lazy( const this_type& rhs )
-    : m_storage(),
-      m_is_initialized(false),
-      m_constructor(rhs.m_constructor),
-      m_destructor(rhs.m_destructor)
+  inline Lazy<T>::Lazy( const Lazy& other )
+    : m_ctor_function(other.m_ctor_function),
+      m_is_initialized(other.m_is_initialized)
   {
-    static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
-
-    if(rhs.m_is_initialized)
-    {
-      construct(*rhs);
+    if(m_is_initialized) {
+      uninitialized_tuple_construct_at<T>( std::addressof(m_storage), std::forward_as_tuple(*other) );
     }
   }
 
-  template<typename T>
-  inline Lazy<T>::Lazy( this_type&& rhs )
-    : m_storage(),
-      m_is_initialized(false),
-      m_constructor(std::move(rhs.m_constructor)),
-      m_destructor(std::move(rhs.m_destructor))
-  {
-    static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
 
-    if(rhs.m_is_initialized)
-    {
-      construct(std::move(*rhs));
+  template<typename T>
+  inline Lazy<T>::Lazy( Lazy&& other )
+    : m_ctor_function(std::move(other.m_ctor_function)),
+      m_is_initialized(std::move(other.m_is_initialized))
+  {
+    if( m_is_initialized ) {
+      uninitialized_tuple_construct_at<T>( std::addressof(m_storage), std::forward_as_tuple( *std::move(other) ) );
     }
-    rhs.m_constructor = nullptr;
-    rhs.m_destructor = nullptr;
   }
+
+  //------------------------------------------------------------------------
 
   template<typename T>
-  inline Lazy<T>::Lazy( const value_type& rhs )
-    : m_storage(),
-      m_is_initialized(false),
-      m_constructor([this,rhs](){this->construct(std::move(rhs));}),
-      m_destructor(default_destructor)
+  template<typename U, std::enable_if_t<detail::lazy_is_enabled_copy_ctor<T,U>::value && !std::is_convertible<const U&, T>::value>*>
+  inline Lazy<T>::Lazy( const Lazy<U>& other )
+    : m_ctor_function(nullptr),
+      m_is_initialized(other.m_is_initialized)
   {
-    static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
+    if( m_is_initialized ) {
+      uninitialized_tuple_construct_at<T>( std::addressof(m_storage), std::forward_as_tuple( *other ) );
+    } else {
+      auto  copy = other;
+      auto& ref  = other.value();
+
+      m_ctor_function = [ref]( void* ptr )
+        mutable
+      {
+        uninitialized_tuple_construct_at<T>( ptr, std::forward_as_tuple( std::move(ref) ) );
+      };
+    }
   }
+
 
   template<typename T>
-  inline Lazy<T>::Lazy( value_type&& rhs )
-    : m_storage(),
-      m_is_initialized(false),
-      m_constructor([this,rhs](){this->construct(std::move(rhs));}),
-      m_destructor(default_destructor)
+  template<typename U, std::enable_if_t<detail::lazy_is_enabled_copy_ctor<T,U>::value && std::is_convertible<const U&, T>::value>*>
+  inline Lazy<T>::Lazy( const Lazy<U>& other )
+    : m_ctor_function(nullptr),
+      m_is_initialized(other.m_is_initialized)
   {
-    static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
+    if( m_is_initialized ) {
+      uninitialized_tuple_construct_at<T>( std::addressof(m_storage), std::forward_as_tuple( *other ) );
+    } else {
+      auto  copy = other;
+      auto& ref  = other.value();
+
+      m_ctor_function = [ref]( void* ptr )
+        mutable
+      {
+        uninitialized_tuple_construct_at<T>( ptr, std::forward_as_tuple( std::move(ref) ) );
+      };
+    }
   }
 
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  template<typename U, std::enable_if_t<detail::lazy_is_enabled_move_ctor<T,U>::value && !std::is_convertible<U&&, T>::value>*>
+  inline Lazy<T>::Lazy( Lazy<U>&& other )
+    : m_ctor_function(nullptr),
+      m_is_initialized(std::move(other.m_is_initialized))
+  {
+    if( m_is_initialized ) {
+      uninitialized_tuple_construct_at<T>( std::addressof(m_storage), std::forward_as_tuple( *std::move(other) ) );
+    } else {
+      auto&& ref  = std::move(other).value();
+
+      m_ctor_function = [ref]( void* ptr )
+        mutable
+      {
+        uninitialized_tuple_construct_at<T>( ptr, std::forward_as_tuple( std::move(ref) ) );
+      };
+    }
+  }
+
+
+  template<typename T>
+  template<typename U, std::enable_if_t<detail::lazy_is_enabled_move_ctor<T,U>::value && std::is_convertible<U&&, T>::value>*>
+  inline Lazy<T>::Lazy( Lazy<U>&& other )
+    : m_ctor_function(nullptr),
+      m_is_initialized(std::move(other.m_is_initialized))
+  {
+    if( m_is_initialized ) {
+      uninitialized_tuple_construct_at<T>( std::addressof(m_storage), std::forward_as_tuple( *std::move(other) ) );
+    } else {
+      auto&& ref  = std::move(other).value();
+
+      m_ctor_function = [ref]( void* ptr )
+        mutable
+      {
+        uninitialized_tuple_construct_at<T>( ptr, std::forward_as_tuple( std::move(ref) ) );
+      };
+    }
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  template<typename...Args, typename>
+  inline Lazy<T>::Lazy( in_place_t, Args&&... args )
+    : m_ctor_function(nullptr),
+      m_is_initialized(false)
+  {
+    auto arg_tuple = std::make_tuple( std::forward<Args>(args)... );
+
+    m_ctor_function = [arg_tuple]( void* ptr )
+      mutable
+    {
+      uninitialized_tuple_construct_at<T>( ptr, std::move(arg_tuple) );
+    };
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  template<typename U, typename...Args, typename>
+  inline Lazy<T>::Lazy( in_place_t, std::initializer_list<U> ilist, Args&&... args )
+    : m_ctor_function(nullptr),
+      m_is_initialized(false)
+  {
+    auto arg_tuple = std::make_tuple( std::move(ilist), std::forward<Args>(args)... );
+
+    m_ctor_function = [arg_tuple]( void* ptr )
+      mutable
+    {
+      uninitialized_tuple_construct_at<T>( ptr, std::move(arg_tuple) );
+    };
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  template<typename U, std::enable_if_t<detail::lazy_is_direct_initializable<T,U>::value && !detail::is_callable<U&>::value && std::is_convertible<U&&, T>::value>*>
+  inline Lazy<T>::Lazy( U&& other )
+    : m_ctor_function([other](void* ptr) mutable { uninitialized_tuple_construct_at<T>(ptr, std::forward_as_tuple( std::move(other) ) );} ),
+      m_is_initialized(false)
+  {
+
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  template<typename U, std::enable_if_t<detail::lazy_is_direct_initializable<T,U>::value && !detail::is_callable<U&>::value && !std::is_convertible<U&&, T>::value>*>
+  inline Lazy<T>::Lazy( U&& other )
+    : m_ctor_function([other](void* ptr) mutable { uninitialized_tuple_construct_at<T>(ptr, std::forward_as_tuple( std::move(other) ) );} ),
+      m_is_initialized(false)
+  {
+
+  }
+
+  //------------------------------------------------------------------------
 
   template<typename T>
   inline Lazy<T>::~Lazy()
@@ -89,77 +185,133 @@ namespace lazy{
     destruct();
   }
 
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
+  // Assignment
+  //------------------------------------------------------------------------
 
   template<typename T>
-  inline Lazy<T>& Lazy<T>::operator=( const this_type& rhs )
+  inline Lazy<T>& Lazy<T>::operator=( const Lazy& other )
   {
-    static_assert(std::is_copy_assignable<T>::value,"No matching copy assignment operator for type T");
-    static_assert(std::is_copy_constructible<T>::value,"No matching copy constructor for type T");
-
-    if(rhs.m_is_initialized) {
-      lazy_construct();
-      assign(*rhs);
+    if( m_is_initialized && other.m_is_initialized ) {
+      (*ptr()) = (*other);
+    } else if( m_is_initialized ) {
+      (*ptr()) = other.value();
+    } else if( other.m_is_initialized ) {
+      value() = (*other);
     } else {
-      m_constructor = rhs.m_constructor;
+      m_ctor_function = other.m_ctor_function;
     }
-    m_destructor  = rhs.m_destructor;
-
     return (*this);
   }
 
+
   template<typename T>
-  inline typename Lazy<T>::this_type& Lazy<T>::operator=( this_type&& rhs )
+  inline Lazy<T>& Lazy<T>::operator=( Lazy&& other )
   {
-    static_assert(std::is_move_assignable<T>::value,"No matching move assignment operator for type T");
-    static_assert(std::is_move_constructible<T>::value,"No matching move constructor for type T");
-
-    if(rhs.m_is_initialized) {
-      lazy_construct();
-      assign(std::move(*rhs));
+    if( m_is_initialized && other.m_is_initialized ) {
+      (*ptr()) = *std::move(other);
+    } else if( m_is_initialized ) {
+      (*ptr()) = std::move(other).value();
+    } else if( other.m_is_initialized ) {
+      value() = *std::move(other);
     } else {
-      m_constructor = std::move(rhs.m_constructor);
-      rhs.m_constructor = nullptr;
+      m_ctor_function = std::move(other.m_ctor_function);
     }
-    m_destructor = std::move(rhs.m_destructor);
-    rhs.m_destructor = nullptr;
-
     return (*this);
   }
 
+  //------------------------------------------------------------------------
+
   template<typename T>
-  inline typename Lazy<T>::value_type& Lazy<T>::operator=( const value_type& rhs )
+  template<typename U, std::enable_if_t<detail::lazy_is_enabled_copy_assignment<T,U>::value>*>
+  inline Lazy<T>& Lazy<T>::operator=( const Lazy<U>& other )
   {
-    static_assert(std::is_copy_assignable<T>::value,"No matching copy assignment operator for type T");
+    if( m_is_initialized && other.m_is_initialized ) {
+      (*ptr()) = (*other);
+    } else if( m_is_initialized ) {
+      (*ptr()) = other.value();
+    } else if( other.m_is_initialized ) {
+      value() = *other;
+    } else {
+      auto  copy = other;
+      auto& ref  = other.value();
 
-    lazy_construct();
-    assign(rhs);
-
-    return *ptr();
+      m_ctor_function = [ref](void* ptr)
+      {
+        uninitialized_tuple_construct_at<T>( ptr, std::forward_as_tuple( std::move(ref) ) );
+      };
+    }
+    return (*this);
   }
 
+
   template<typename T>
-  inline typename Lazy<T>::value_type& Lazy<T>::operator=( value_type&& rhs )
- {
-    static_assert(std::is_move_assignable<T>::value,"No matching move assignment operator for type T");
+  template<typename U, std::enable_if_t<detail::lazy_is_enabled_move_assignment<T,U>::value>*>
+  inline Lazy<T>& Lazy<T>::operator=( Lazy<U>&& other )
+  {
+    if( m_is_initialized && other.m_is_initialized ) {
+      (*ptr()) = *std::move(other);
+    } else if( m_is_initialized ) {
+      (*ptr()) = std::move(other).value();
+    } else if( other.m_is_initialized ) {
+      value() = *std::move(other);
+    } else {
+      auto&& ref  = std::move(other).value();
 
-    lazy_construct();
-    assign(std::forward<value_type>(rhs));
-
-    return *ptr();
+      m_ctor_function = [ref](void* ptr)
+      {
+        uninitialized_tuple_construct_at<T>( ptr, std::forward_as_tuple( std::move(ref) ) );
+      };
+    }
+    return (*this);
   }
 
-  //--------------------------------------------------------------------------
-  // Casting
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
 
   template<typename T>
-  inline Lazy<T>::operator reference()
+  template<typename U, std::enable_if_t<detail::lazy_is_direct_init_assignable<T,U>::value>*>
+  inline Lazy<T>& Lazy<T>::operator=( U&& value )
+  {
+    this->value() = std::forward<U>(value);
+    return (*this);
+  }
+
+  //------------------------------------------------------------------------
+  // Modifiers
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline void Lazy<T>::initialize()
     const
   {
     lazy_construct();
-    return *ptr();
   }
+
+  template<typename T>
+  inline void Lazy<T>::reset()
+  {
+    destruct();
+  }
+
+  template<typename T>
+  inline void Lazy<T>::swap( Lazy& other )
+  {
+    using std::swap;
+
+    if( m_is_initialized && other.m_is_initialized ) {
+      swap(*ptr(),*other);
+    } else if( m_is_initialized ) {
+      swap(*ptr(),other.value());
+    } else if( other.m_is_initialized ) {
+      swap(value(),*other);
+    } else {
+      swap(m_ctor_function, other.m_ctor_function);
+    }
+  }
+
+  //------------------------------------------------------------------------
+  // Observers
+  //------------------------------------------------------------------------
 
   template<typename T>
   inline Lazy<T>::operator bool()
@@ -168,188 +320,322 @@ namespace lazy{
     return m_is_initialized;
   }
 
-  //--------------------------------------------------------------------------
-  // Operators
-  //--------------------------------------------------------------------------
 
   template<typename T>
-  inline void Lazy<T>::swap(Lazy<T>& rhs)
-    noexcept
-  {
-    using std::swap; // for ADL
-
-    swap(m_constructor,rhs.m_constructor);
-    swap(m_destructor,rhs.m_destructor);
-    swap(m_is_initialized,rhs.m_is_initialized);
-    swap((*ptr()),(*rhs.ptr())); // Swap the values of the T types
-  }
-
-  template<typename T>
-  inline bool Lazy<T>::is_initialized()
+  inline bool Lazy<T>::has_value()
     const noexcept
   {
     return m_is_initialized;
   }
 
+  //------------------------------------------------------------------------
+
   template<typename T>
-  inline typename Lazy<T>::pointer Lazy<T>::get()
-    const
+  inline typename Lazy<T>::value_type* Lazy<T>::operator->()
   {
-    lazy_construct();
     return ptr();
   }
 
+
   template<typename T>
-  inline typename Lazy<T>::reference Lazy<T>::operator*()
+  inline const typename Lazy<T>::value_type* Lazy<T>::operator->()
     const
+  {
+    return ptr();
+  }
+
+
+  template<typename T>
+  inline typename Lazy<T>::value_type& Lazy<T>::operator*()
+    &
+  {
+    return *ptr();
+  }
+
+
+  template<typename T>
+  inline const typename Lazy<T>::value_type& Lazy<T>::operator*()
+    const &
+  {
+    return *ptr();
+  }
+
+
+  template<typename T>
+  inline typename Lazy<T>::value_type&& Lazy<T>::operator*()
+    &&
+  {
+    return std::move(*ptr());
+  }
+
+
+  template<typename T>
+  inline const typename Lazy<T>::value_type&& Lazy<T>::operator*()
+    const &&
+  {
+    return std::move(*ptr());
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline typename Lazy<T>::value_type& Lazy<T>::value()
+    &
   {
     lazy_construct();
     return *ptr();
   }
 
+
   template<typename T>
-  inline typename Lazy<T>::pointer Lazy<T>::operator->()
-    const
+  inline const typename Lazy<T>::value_type& Lazy<T>::value()
+    const &
   {
     lazy_construct();
-    return ptr();
+    return *ptr();
   }
 
-  //--------------------------------------------------------------------------
-  // Private Static Member Functions
-  //--------------------------------------------------------------------------
 
   template<typename T>
-  inline void Lazy<T>::default_destructor(value_type&) noexcept{}
-
-  //--------------------------------------------------------------------------
-  // Private Constructors
-  //--------------------------------------------------------------------------
-
-  template<typename T>
-  template<typename...Args>
-  inline Lazy<T>::Lazy( ctor_va_args_tag, Args&&...args )
-    : m_is_initialized(false),
-      m_constructor([this,args...](){this->construct(ctor_va_args_tag(), std::move(args)...);}),
-      m_destructor(default_destructor)
+  inline typename Lazy<T>::value_type&& Lazy<T>::value()
+    &&
   {
-    static_assert(std::is_constructible<T,Args...>::value, "No matching constructor for type T with given arguments");
+    lazy_construct();
+    return std::move(*ptr());
   }
 
-  //--------------------------------------------------------------------------
+
+  template<typename T>
+  inline const typename Lazy<T>::value_type&& Lazy<T>::value()
+    const &&
+  {
+    lazy_construct();
+    return std::move(*ptr());
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  template<typename U>
+  inline typename Lazy<T>::value_type Lazy<T>::value_or( U&& default_value )
+    const &
+  {
+    return has_value() ? (*ptr()) : std::forward<U>(default_value);
+  }
+
+
+  template<typename T>
+  template<typename U>
+  inline typename Lazy<T>::value_type Lazy<T>::value_or( U&& default_value )
+    &&
+  {
+    return has_value() ? (*ptr()) : std::forward<U>(default_value);
+  }
+
+
+  //------------------------------------------------------------------------
+  // Private Constructor
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  template<typename Ctor>
+  inline Lazy<T>::Lazy( ctor_tag, Ctor&& ctor )
+    : m_ctor_function([ctor](void* ptr){ uninitialized_tuple_construct_at<T>(ptr, ctor()); }),
+      m_is_initialized(false)
+  {
+
+  }
+
+  //------------------------------------------------------------------------
   // Private Member Functions
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
 
   template<typename T>
-  inline typename Lazy<T>::unqualified_pointer Lazy<T>::ptr()
-    const noexcept
-  {
-    // address-of idiom (https://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Address_Of)
-    return reinterpret_cast<unqualified_pointer>(& const_cast<char&>(reinterpret_cast<const volatile char &>(m_storage)));
-  }
-
-  template<typename T>
-  inline void Lazy<T>::lazy_construct( )
+  inline typename Lazy<T>::value_type* Lazy<T>::ptr()
     const
   {
-    if( !m_is_initialized )
-    {
-      m_constructor();
+    return static_cast<value_type*>( static_cast<void*>( std::addressof(m_storage) ) );
+  }
+
+
+  template<typename T>
+  inline void Lazy<T>::lazy_construct() const
+  {
+    if(!m_is_initialized) {
+
+      m_ctor_function( std::addressof(m_storage) );
       m_is_initialized = true;
     }
   }
 
-  template<typename T>
-  inline void Lazy<T>::construct( const value_type& x )
-    const
-  {
-    destruct();
-    new (ptr()) value_type( x );
-    m_is_initialized = true;
-  }
 
   template<typename T>
-  inline void Lazy<T>::construct( value_type&& x )
-    const
+  inline void Lazy<T>::destruct()
   {
-    destruct();
-    new (ptr()) value_type( std::forward<value_type>(x) );
-    m_is_initialized = true;
-  }
-
-  template<typename T>
-  template<typename...Args>
-  inline void Lazy<T>::construct( ctor_va_args_tag, Args&&...args )
-    const
-  {
-    destruct();
-    new (ptr()) value_type( std::forward<Args>(args)... );
-    m_is_initialized = true;
-  }
-
-  template<typename T>
-  template<typename...Args>
-  inline void Lazy<T>::construct( const std::tuple<Args...>& args )
-    const
-  {
-    destruct();
-    tuple_construct(args,detail::index_sequence_for<Args...>());
-    m_is_initialized = true;
-  }
-
-  template<typename T>
-  template<typename...Args, std::size_t...Ints>
-  inline void Lazy<T>::tuple_construct(const std::tuple<Args...>& args,
-                                       const detail::index_sequence<Ints...>& )
-    const noexcept( std::is_nothrow_constructible<T,Args...>::value )
-  {
-    static_assert(std::is_constructible<T,Args...>::value,"No matching constructor for type T with given arguments");
-
-    new (ptr()) T( std::get<Ints>(args)... );
-  }
-
-  template<typename T>
-  inline void Lazy<T>::destruct( ) const
-  {
-    if( m_is_initialized )
-    {
-      if( m_destructor )
-      {
-        m_destructor(*ptr());
-      }
-      ptr()->~T();
+    if(m_is_initialized) {
+      destroy_at<T>( static_cast<T*>(static_cast<void*>(std::addressof(m_storage))) );
       m_is_initialized = false;
     }
   }
 
-  template<typename T>
-  inline void Lazy<T>::assign( const value_type& rhs )
-    const noexcept( std::is_nothrow_copy_assignable<T>::value )
-  {
-    (*ptr()) = rhs;
-  }
-
-  template<typename T>
-  inline void Lazy<T>::assign( value_type&& rhs )
-    const noexcept( std::is_nothrow_move_assignable<T>::value )
-  {
-    (*ptr()) = std::forward<value_type>(rhs);
-  }
-
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
   // Utilities
-  //--------------------------------------------------------------------------
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline std::size_t hash_value( const Lazy<T>& val )
+  {
+    return hash_value( val.value() );
+  }
+
+  //------------------------------------------------------------------------
 
   template<typename T, typename...Args>
-  Lazy<T> make_lazy(Args&&...args)
+  inline Lazy<T> make_lazy( Args&&...args )
   {
-    return Lazy<T>(typename Lazy<T>::ctor_va_args_tag(), std::forward<Args>(args)...);
+    return Lazy<T>( in_place, std::forward<Args>(args)... );
+  }
+
+  template<typename T, typename U, typename...Args>
+  inline Lazy<T> make_lazy( std::initializer_list<U> ilist, Args&&...args )
+  {
+    return Lazy<T>( in_place, std::move(ilist), std::forward<Args>(args)... );
+  }
+
+  template<typename T, typename Ctor>
+  Lazy<T> make_lazy_generator( Ctor&& ctor )
+  {
+    return Lazy<T>( typename Lazy<T>::ctor_tag{}, std::forward<Ctor>(ctor) );
+  }
+
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline void swap( Lazy<T>& lhs, Lazy<T>& rhs )
+  {
+    lhs.swap(rhs);
+  }
+
+  //------------------------------------------------------------------------
+  // Comparisons
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline bool operator==( const Lazy<T>& lhs, const Lazy<T>& rhs )
+  {
+    return lhs.value() == rhs.value();
   }
 
   template<typename T>
-  void swap(Lazy<T>& lhs, Lazy<T>& rhs) noexcept
+  inline bool operator==( const Lazy<T>& lhs, const T& rhs )
   {
-    lhs.swap(rhs);
+    return lhs.value() == rhs;
+  }
+
+  template<typename T>
+  inline bool operator==( const T& lhs, const Lazy<T>& rhs )
+  {
+    return lhs == rhs.value();
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline bool operator!=( const Lazy<T>& lhs, const Lazy<T>& rhs )
+  {
+    return lhs.value() != rhs.value();
+  }
+
+  template<typename T>
+  inline bool operator!=( const Lazy<T>& lhs, const T& rhs )
+  {
+    return lhs.value() != rhs;
+  }
+
+  template<typename T>
+  inline bool operator!=( const T& lhs, const Lazy<T>& rhs )
+  {
+    return lhs != rhs.value();
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline bool operator<( const Lazy<T>& lhs, const Lazy<T>& rhs )
+  {
+    return lhs.value() < rhs.value();
+  }
+
+  template<typename T>
+  inline bool operator<( const Lazy<T>& lhs, const T& rhs )
+  {
+    return lhs.value() < rhs;
+  }
+
+  template<typename T>
+  inline bool operator<( const T& lhs, const Lazy<T>& rhs )
+  {
+    return lhs < rhs.value();
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline bool operator<=( const Lazy<T>& lhs, const Lazy<T>& rhs )
+  {
+    return lhs.value() <= rhs.value();
+  }
+
+  template<typename T>
+  inline bool operator<=( const Lazy<T>& lhs, const T& rhs )
+  {
+    return lhs.value() <= rhs;
+  }
+
+  template<typename T>
+  inline bool operator<=( const T& lhs, const Lazy<T>& rhs )
+  {
+    return lhs <= rhs.value();
+  }
+
+  //------------------------------------------------------------------------
+  template<typename T>
+  inline bool operator>( const Lazy<T>& lhs, const Lazy<T>& rhs )
+  {
+    return lhs.value() > rhs.value();
+  }
+
+  template<typename T>
+  inline bool operator>( const Lazy<T>& lhs, const T& rhs )
+  {
+    return lhs.value() > rhs;
+  }
+
+  template<typename T>
+  inline bool operator>( const T& lhs, const Lazy<T>& rhs )
+  {
+    return lhs > rhs.value();
+  }
+
+  //------------------------------------------------------------------------
+
+  template<typename T>
+  inline bool operator>=( const Lazy<T>& lhs, const Lazy<T>& rhs )
+  {
+    return lhs.value() >= rhs.value();
+  }
+
+  template<typename T>
+  inline bool operator>=( const Lazy<T>& lhs, const T& rhs )
+  {
+    return lhs.value() >= rhs;
+  }
+
+  template<typename T>
+  inline bool operator>=( const T& lhs, const Lazy<T>& rhs )
+  {
+    return lhs >= rhs.value();
   }
 
 } // namespace lazy
